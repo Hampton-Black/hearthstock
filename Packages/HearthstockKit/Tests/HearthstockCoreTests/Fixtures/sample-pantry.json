@@ -1,0 +1,379 @@
+{
+  "today": "2026-10-06",
+  "site": {
+    "id": "00000001-0000-0000-0000-000000000001",
+    "name": "Main house"
+  },
+  "occupants": [
+    {
+      "id": "00000006-0000-0000-0000-000000000001",
+      "siteID": "00000001-0000-0000-0000-000000000001",
+      "name": "Adult A",
+      "kcalPerDay": 2400,
+      "waterGalPerDay": 1.0
+    },
+    {
+      "id": "00000006-0000-0000-0000-000000000002",
+      "siteID": "00000001-0000-0000-0000-000000000001",
+      "name": "Adult B",
+      "kcalPerDay": 2000,
+      "waterGalPerDay": 1.0
+    }
+  ],
+  "locations": [
+    {
+      "id": "00000002-0000-0000-0000-000000000001",
+      "siteID": "00000001-0000-0000-0000-000000000001",
+      "name": "Garage shelf",
+      "climateClass": "hot",
+      "humidity": "humid"
+    },
+    {
+      "id": "00000002-0000-0000-0000-000000000002",
+      "siteID": "00000001-0000-0000-0000-000000000001",
+      "name": "Hall closet",
+      "climateClass": "coolDry",
+      "humidity": "dry"
+    },
+    {
+      "id": "00000002-0000-0000-0000-000000000003",
+      "siteID": "00000001-0000-0000-0000-000000000001",
+      "name": "Go-bag",
+      "parentID": "00000002-0000-0000-0000-000000000002",
+      "kitID": "00000003-0000-0000-0000-000000000001"
+    }
+  ],
+  "kits": [
+    {
+      "id": "00000003-0000-0000-0000-000000000001",
+      "locationID": "00000002-0000-0000-0000-000000000003",
+      "countsTowardSiteRunway": false
+    }
+  ],
+  "products": [
+    {
+      "id": "00000004-0000-0000-0000-000000000001",
+      "name": "White rice",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "mass",
+      "shelfLifeProfileKey": "white_rice",
+      "kcalPerBaseUnit": 1650
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000002",
+      "name": "Black beans, 15 oz can",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "count",
+      "shelfLifeProfileKey": "canned_low_acid",
+      "kcalPerBaseUnit": 385
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000003",
+      "name": "Bottled water, 0.5 L",
+      "category": "water",
+      "role": "supply",
+      "unitKind": "volume",
+      "shelfLifeProfileKey": "bottled_water",
+      "potableWaterGalPerBaseUnit": 1.0
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000004",
+      "name": "Stored tap water",
+      "category": "water",
+      "role": "supply",
+      "unitKind": "volume",
+      "shelfLifeProfileKey": "stored_tap_water",
+      "potableWaterGalPerBaseUnit": 1.0
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000005",
+      "name": "Pinto beans, dry",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "mass",
+      "shelfLifeProfileKey": "dried_beans",
+      "kcalPerBaseUnit": 1570
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000006",
+      "name": "All-purpose flour",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "mass",
+      "shelfLifeProfileKey": "flour",
+      "kcalPerBaseUnit": 1650
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000007",
+      "name": "Peanut butter, 28 oz jar",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "count",
+      "shelfLifeProfileKey": "peanut_butter",
+      "kcalPerBaseUnit": 4700
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000008",
+      "name": "Honey",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "mass",
+      "shelfLifeProfileKey": "honey_salt_sugar",
+      "kcalPerBaseUnit": 1380
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000009",
+      "name": "MRE",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "count",
+      "shelfLifeProfileKey": "mre",
+      "kcalPerBaseUnit": 1250
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000010",
+      "name": "Canned chicken, 12.5 oz can",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "count",
+      "shelfLifeProfileKey": "canned_low_acid",
+      "kcalPerBaseUnit": 350
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000011",
+      "name": "Rolled oats",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "mass",
+      "shelfLifeProfileKey": "rolled_oats",
+      "kcalPerBaseUnit": 1700
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000012",
+      "name": "Diced tomatoes, 14.5 oz can",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "count",
+      "shelfLifeProfileKey": "canned_high_acid",
+      "kcalPerBaseUnit": 100
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000013",
+      "name": "Homemade jerky",
+      "category": "food",
+      "role": "supply",
+      "unitKind": "mass",
+      "shelfLifeProfileKey": "unknown_food"
+    },
+    {
+      "id": "00000004-0000-0000-0000-000000000014",
+      "name": "Rain barrel water",
+      "category": "water",
+      "role": "supply",
+      "unitKind": "volume",
+      "shelfLifeProfileKey": "stored_tap_water"
+    }
+  ],
+  "lots": [
+    {
+      "id": "00000005-0000-0000-0000-000000000001",
+      "productID": "00000004-0000-0000-0000-000000000001",
+      "quantity": 20,
+      "acquiredDate": "2026-06-15",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2027-06-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000002",
+      "productID": "00000004-0000-0000-0000-000000000002",
+      "quantity": 6,
+      "acquiredDate": "2025-07-20",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2025-08-06"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000003",
+      "productID": "00000004-0000-0000-0000-000000000003",
+      "quantity": 3.17,
+      "acquiredDate": "2026-04-10",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2027-03-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000004",
+      "productID": "00000004-0000-0000-0000-000000000004",
+      "quantity": 5,
+      "acquiredDate": "2026-02-06",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": false
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000005",
+      "productID": "00000004-0000-0000-0000-000000000005",
+      "quantity": 25,
+      "acquiredDate": "2024-03-15",
+      "packaging": "mylarO2",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000006",
+      "productID": "00000004-0000-0000-0000-000000000006",
+      "quantity": 10,
+      "acquiredDate": "2026-02-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2026-05-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000007",
+      "productID": "00000004-0000-0000-0000-000000000007",
+      "quantity": 2,
+      "acquiredDate": "2026-01-20",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2026-07-15"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000008",
+      "productID": "00000004-0000-0000-0000-000000000008",
+      "quantity": 3,
+      "acquiredDate": "2025-11-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000009",
+      "productID": "00000004-0000-0000-0000-000000000009",
+      "quantity": 3,
+      "acquiredDate": "2026-03-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000003",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2027-01-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000010",
+      "productID": "00000004-0000-0000-0000-000000000010",
+      "quantity": 4,
+      "acquiredDate": "2026-05-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2028-02-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000011",
+      "productID": "00000004-0000-0000-0000-000000000011",
+      "quantity": 5,
+      "acquiredDate": "2026-06-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2026-12-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000012",
+      "productID": "00000004-0000-0000-0000-000000000012",
+      "quantity": 4,
+      "acquiredDate": "2025-06-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2025-09-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000013",
+      "productID": "00000004-0000-0000-0000-000000000013",
+      "quantity": 2,
+      "acquiredDate": "2026-09-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000014",
+      "productID": "00000004-0000-0000-0000-000000000003",
+      "quantity": 3.17,
+      "acquiredDate": "2025-01-10",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false,
+      "printedDate": "2025-01-01"
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000015",
+      "productID": "00000004-0000-0000-0000-000000000004",
+      "quantity": 7,
+      "acquiredDate": "2026-07-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000002",
+      "opened": false,
+      "archived": false
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000016",
+      "productID": "00000004-0000-0000-0000-000000000014",
+      "quantity": 50,
+      "acquiredDate": "2026-09-20",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": false
+    },
+    {
+      "id": "00000005-0000-0000-0000-000000000017",
+      "productID": "00000004-0000-0000-0000-000000000001",
+      "quantity": 0,
+      "acquiredDate": "2025-01-01",
+      "packaging": "none",
+      "locationID": "00000002-0000-0000-0000-000000000001",
+      "opened": false,
+      "archived": true,
+      "printedDate": "2026-01-01"
+    }
+  ],
+  "expected": {
+    "foodKcalLow": 86290,
+    "foodKcalHigh": 98000,
+    "waterGalLow": 10.17,
+    "waterGalHigh": 13.34,
+    "foodDaysLow": 19.611363636363638,
+    "foodDaysHigh": 22.272727272727273,
+    "waterDaysLow": 5.085,
+    "waterDaysHigh": 6.67,
+    "limitingCategory": "water",
+    "nextTargetDays": 14,
+    "nextTargetShortfall": 17.83,
+    "untreatedNonPotableGal": 50,
+    "lotsMissingNutrition": [
+      "00000005-0000-0000-0000-000000000013"
+    ]
+  }
+}
