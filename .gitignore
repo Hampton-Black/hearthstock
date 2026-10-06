@@ -8,3 +8,10 @@
 
 .idea
 .DS_Store
+
+# Xcode / SwiftPM
+*.xcodeproj
+.build/
+DerivedData/
+.swiftpm/
+xcuserdata/
