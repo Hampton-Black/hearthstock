@@ -17,7 +17,7 @@ import Testing
 
     @Test func productBaseUnitFollowsUnitKind() {
         let rice = Product(name: "White rice", category: .food, role: .supply, unitKind: .mass,
-                           kcalPerBaseUnit: 1650, shelfLifeProfileKey: "white-rice")
+                           kcalPerBaseUnit: 1650, shelfLifeProfileKey: "white_rice")
         #expect(rice.baseUnit == .pound)
         #expect(rice.barcode == nil)
         #expect(rice.potableWaterGalPerBaseUnit == nil)

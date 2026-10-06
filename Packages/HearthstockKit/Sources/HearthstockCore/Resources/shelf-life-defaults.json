@@ -1,0 +1,21 @@
+[
+  { "key": "canned_low_acid",  "dateType": "bestBy", "extensionMonths": 24 },
+  { "key": "canned_high_acid", "dateType": "bestBy", "extensionMonths": 12 },
+  { "key": "white_rice",       "dateType": "bestBy", "extensionMonths": 24, "packagedLifeMonths": 120 },
+  { "key": "dried_beans",      "dateType": "bestBy", "extensionMonths": 24, "packagedLifeMonths": 120 },
+  { "key": "wheat_berries",    "dateType": "bestBy", "extensionMonths": 24, "packagedLifeMonths": 120 },
+  { "key": "rolled_oats",      "dateType": "bestBy", "extensionMonths": 12, "packagedLifeMonths": 60 },
+  { "key": "pasta_dry",        "dateType": "bestBy", "extensionMonths": 12, "packagedLifeMonths": 60 },
+  { "key": "brown_rice",       "dateType": "bestBy", "extensionMonths": 3 },
+  { "key": "flour",            "dateType": "bestBy", "extensionMonths": 6 },
+  { "key": "cooking_oil",      "dateType": "bestBy", "extensionMonths": 3 },
+  { "key": "peanut_butter",    "dateType": "bestBy", "extensionMonths": 6 },
+  { "key": "freeze_dried",     "dateType": "bestBy", "extensionMonths": 12 },
+  { "key": "mre",              "dateType": "bestBy", "extensionMonths": 12 },
+  { "key": "bottled_water",    "dateType": "bestBy", "extensionMonths": 24 },
+  { "key": "stored_tap_water", "dateType": "none",   "rotationMonths": 6 },
+  { "key": "honey_salt_sugar", "dateType": "none" },
+  { "key": "infant_formula",   "dateType": "useBy",  "extensionMonths": 0 },
+  { "key": "medication",       "dateType": "useBy",  "extensionMonths": 0 },
+  { "key": "unknown_food",     "dateType": "bestBy", "extensionMonths": 6 }
+]

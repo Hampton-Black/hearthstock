@@ -15,7 +15,7 @@ let package = Package(
         .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
     ],
     targets: [
-        .target(name: "HearthstockCore"),
+        .target(name: "HearthstockCore", resources: [.process("Resources")]),
         .target(
             name: "HearthstockStore",
             dependencies: [
