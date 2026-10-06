@@ -15,16 +15,22 @@ public struct GRDBLotRepository: LotRepository {
     }
 
     public func list(siteID: SiteID, includeArchived: Bool) async throws -> [Lot] {
-        try await database.writer.read { db in
-            var request = LotRecord.filter(Column("siteId") == siteID.stored)
-            if !includeArchived {
-                request = request.filter(Column("archived") == false)
-            }
-            return try request
-                .order(Column("acquiredDate"), Column("createdAt"), Column("id"))
-                .fetchAll(db)
-                .map { try $0.toCore() }
+        try await database.writer.read { db in try Self.fetch(db, siteID: siteID, includeArchived: includeArchived) }
+    }
+
+    public func observeLots(siteID: SiteID) -> AsyncThrowingStream<[Lot], any Error> {
+        database.observe { db in try Self.fetch(db, siteID: siteID, includeArchived: false) }
+    }
+
+    private static func fetch(_ db: Database, siteID: SiteID, includeArchived: Bool) throws -> [Lot] {
+        var request = LotRecord.filter(Column("siteId") == siteID.stored)
+        if !includeArchived {
+            request = request.filter(Column("archived") == false)
         }
+        return try request
+            .order(Column("acquiredDate"), Column("createdAt"), Column("id"))
+            .fetchAll(db)
+            .map { try $0.toCore() }
     }
 
     public func save(_ lot: Lot) async throws {

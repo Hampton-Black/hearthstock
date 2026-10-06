@@ -32,6 +32,29 @@ public struct AppDatabase: Sendable {
             .appending(path: "hearthstock.sqlite", directoryHint: .notDirectory)
     }
 
+    /// Runs `fetch` now and again after each write that touches what it read, as a stream. A re-fetch that
+    /// produces an equal value emits nothing, so writes elsewhere (other sites included) stay silent. Iteration
+    /// ending, or the consuming task being cancelled, stops the observation.
+    func observe<Value: Equatable & Sendable>(
+        _ fetch: @escaping @Sendable (Database) throws -> Value
+    ) -> AsyncThrowingStream<Value, any Error> {
+        let writer = writer
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let observation = ValueObservation.tracking(fetch).removeDuplicates()
+                    for try await value in observation.values(in: writer) {
+                        continuation.yield(value)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
     static func makeConfiguration() -> Configuration {
         var config = Configuration()
         config.foreignKeysEnabled = true

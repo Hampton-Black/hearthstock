@@ -508,3 +508,113 @@ private struct Harness {
         #expect(loaded.water.highAmount == 14)
     }
 }
+
+/// Pulls values off a stream one at a time so a test can write between reads.
+private struct Subscription<Element: Sendable> {
+    private var iterator: AsyncThrowingStream<Element, any Error>.AsyncIterator
+
+    init(_ stream: AsyncThrowingStream<Element, any Error>) {
+        iterator = stream.makeAsyncIterator()
+    }
+
+    mutating func next() async throws -> Element {
+        try #require(try await iterator.next(), "stream finished")
+    }
+}
+
+@Suite struct ObservationTests {
+    @Test func runwayInputsEmitCurrentValueThenEachRelevantWrite() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        var inputs = Subscription(h.inputs.observeRunwayInputs(siteID: seeded.site.id))
+
+        let first = try await inputs.next()
+        #expect(first == (try await h.inputs.load(siteID: seeded.site.id)))
+        #expect(first.lots == [seeded.lot])
+
+        let extra = Harness.lot(seeded.rice, in: seeded.pantry, quantity: 4)
+        try await h.lots.save(extra)
+        let afterSave = try await inputs.next()
+        #expect(Set(afterSave.lots.map(\.id)) == [seeded.lot.id, extra.id])
+
+        let ada = Person(siteID: seeded.site.id, name: "Ada")
+        try await h.people.save(ada)
+        #expect(try await inputs.next().occupants == [ada])
+
+        try await h.lots.archive(extra.id)
+        #expect(try await inputs.next().lots == [seeded.lot])
+    }
+
+    @Test func writesToAnotherSiteDoNotChangeRunwayInputs() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        var inputs = Subscription(h.inputs.observeRunwayInputs(siteID: seeded.site.id))
+        let first = try await inputs.next()
+
+        let cabin = Site(name: "Cabin")
+        try await h.sites.save(cabin)
+        let loft = Location(siteID: cabin.id, name: "Loft")
+        try await h.locations.save(loft)
+        try await h.people.save(Person(siteID: cabin.id, name: "Bo"))
+        try await h.lots.save(Harness.lot(seeded.rice, in: loft))
+        try await h.kits.save(Kit(locationID: loft.id))
+
+        // Nothing above is this site's, so the next emission is the one this write causes.
+        let mine = Harness.lot(seeded.rice, in: seeded.pantry, quantity: 2)
+        try await h.lots.save(mine)
+        let next = try await inputs.next()
+        #expect(next.lots.map(\.id).contains(mine.id))
+        #expect(next.site == first.site)
+        #expect(next.occupants == first.occupants)
+        #expect(next.locations == first.locations)
+        #expect(next.kits == first.kits)
+        #expect(Set(next.lots.map(\.id)) == [seeded.lot.id, mine.id])
+    }
+
+    @Test func lotsEmitCurrentValueThenUpdatesAndIgnoreOtherSites() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        var lots = Subscription(h.lots.observeLots(siteID: seeded.site.id))
+        #expect(try await lots.next() == [seeded.lot])
+
+        let cabin = Site(name: "Cabin")
+        try await h.sites.save(cabin)
+        let loft = Location(siteID: cabin.id, name: "Loft")
+        try await h.locations.save(loft)
+        try await h.lots.save(Harness.lot(seeded.rice, in: loft))
+
+        let extra = Harness.lot(seeded.rice, in: seeded.pantry, quantity: 4)
+        try await h.lots.save(extra)
+        #expect(Set(try await lots.next().map(\.id)) == [seeded.lot.id, extra.id])
+
+        _ = try await h.lots.consume(extra.id, amount: 1)
+        let consumed = try await lots.next()
+        #expect(consumed.first { $0.id == extra.id }?.quantity == 3)
+
+        // Archived lots drop out of the observed list, matching `list(includeArchived: false)`.
+        try await h.lots.archive(seeded.lot.id)
+        #expect(try await lots.next().map(\.id) == [extra.id])
+    }
+
+    @Test func missingSiteFinishesRunwayInputsStreamWithTypedError() async throws {
+        let h = try Harness()
+        let id = SiteID()
+        var inputs = Subscription(h.inputs.observeRunwayInputs(siteID: id))
+        await #expect(throws: RepositoryError.siteNotFound(id)) { _ = try await inputs.next() }
+    }
+
+    @Test func cancellingTheConsumerStopsObserving() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        let stream = h.lots.observeLots(siteID: seeded.site.id)
+        let consumer = Task {
+            var received = 0
+            for try await _ in stream { received += 1 }
+            return received
+        }
+        try await Task.sleep(for: .milliseconds(100))
+        consumer.cancel()
+        let received = try await consumer.value
+        #expect(received >= 1)
+    }
+}

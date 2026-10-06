@@ -63,6 +63,10 @@ public protocol LotRepository: Sendable {
     @discardableResult
     func consume(_ id: LotID, amount: Double) async throws -> Lot
     func archive(_ id: LotID) async throws
+    /// The unarchived lots of `siteID`, in `list` order: the current value first, then again after each write
+    /// that changes them. A write to another site, or one that leaves the lots as they were, emits nothing.
+    /// The stream ends when its consumer stops iterating, or throws if reading fails.
+    func observeLots(siteID: SiteID) -> AsyncThrowingStream<[Lot], any Error>
 }
 
 public protocol KitRepository: Sendable {
@@ -104,6 +108,12 @@ public protocol RunwayInputsLoader: Sendable {
     /// A consistent snapshot of a site, read in one transaction so a write in progress is never half-seen.
     /// Throws `RepositoryError.siteNotFound` if the site doesn't exist.
     func load(siteID: SiteID) async throws -> RunwayInputs
+
+    /// `load`'s snapshot of `siteID`: the current value first, then again after each write that changes it.
+    /// A write to another site, or one that leaves this site's inputs as they were, emits nothing. The stream
+    /// ends when its consumer stops iterating, and throws `RepositoryError.siteNotFound` if the site doesn't
+    /// exist (or any storage error if reading fails).
+    func observeRunwayInputs(siteID: SiteID) -> AsyncThrowingStream<RunwayInputs, any Error>
 }
 
 extension RunwayCalculator {
