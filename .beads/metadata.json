@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "hearthstock",
+  "project_id": "1c37acdc-1877-437b-ad24-8a3e28fae19a"
+}
