@@ -28,6 +28,6 @@ let package = Package(
             dependencies: ["HearthstockCore"],
             resources: [.copy("Fixtures")]
         ),
-        .testTarget(name: "HearthstockStoreTests", dependencies: ["HearthstockStore"]),
+        .testTarget(name: "HearthstockStoreTests", dependencies: ["HearthstockStore", "HearthstockCore"]),
     ]
 )

@@ -41,7 +41,8 @@ public struct AppDatabase: Sendable {
     /// The single migrator. Migrations are append-only and registered in order; never edit one
     /// that has shipped. `eraseDatabaseOnSchemaChange` is deliberately not used.
     static var migrator: DatabaseMigrator {
-        // Migrations are registered here, starting with v1_initial.
-        DatabaseMigrator()
+        var migrator = DatabaseMigrator()
+        migrator.registerHearthstockMigrations()
+        return migrator
     }
 }
