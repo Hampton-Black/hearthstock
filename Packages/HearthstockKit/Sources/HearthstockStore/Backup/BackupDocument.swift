@@ -20,6 +20,21 @@ struct BackupDocument: Codable, Equatable {
     var lots: [LotRecord]
     var shelfLifeOverrides: [ShelfLifeOverrideRecord]
 
+    /// The same rows in ID order under the current format, so two documents compare by content alone. A version 1
+    /// file's sites already decode with the default notice window, as the migration gave them.
+    func normalized() -> BackupDocument {
+        var copy = self
+        copy.formatVersion = Self.currentFormatVersion
+        copy.sites.sort { $0.id < $1.id }
+        copy.people.sort { $0.id < $1.id }
+        copy.products.sort { $0.id < $1.id }
+        copy.locations.sort { $0.id < $1.id }
+        copy.kits.sort { $0.id < $1.id }
+        copy.lots.sort { $0.id < $1.id }
+        copy.shelfLifeOverrides.sort { $0.id < $1.id }
+        return copy
+    }
+
     /// Just enough to refuse a file from a different format before trying to read the rest of it.
     struct Header: Decodable {
         var formatVersion: Int

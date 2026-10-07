@@ -10,6 +10,8 @@ struct RestoreSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var phase: Phase = .reading
     @State private var current: BackupSummary?
+    /// The file holds exactly what's on the phone now, so restoring it would change nothing.
+    @State private var identical = false
     @State private var confirming = false
     @State private var restoring = false
     @State private var sharing: ShareItem?
@@ -79,7 +81,15 @@ struct RestoreSheet: View {
                     LabeledContent("Products", value: "\(summary.products)")
                     LabeledContent("Locations · people", value: "\(summary.locations) · \(summary.people)")
                 }
-                if let current {
+                if identical {
+                    Section {
+                        Label("This backup matches what's on this iPhone. Restoring it wouldn't change anything.",
+                              systemImage: "checkmark.circle")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.hsGood)
+                            .listRowBackground(Color.hsGoodBg)
+                    }
+                } else if let current {
                     Section("Will be replaced") {
                         Text(replacedText(current, since: summary.exportedAt))
                             .font(.subheadline)
@@ -91,11 +101,16 @@ struct RestoreSheet: View {
             .hearthList()
 
             VStack(spacing: 12) {
-                Button("Export current data first") { Task { await exportCurrent() } }
-                    .buttonStyle(PrimaryButtonStyle())
-                Button("Replace with this backup") { confirming = true }
-                    .buttonStyle(PrimaryButtonStyle(role: .destructive))
-                    .disabled(restoring)
+                if identical {
+                    Button("Done") { dismiss() }
+                        .buttonStyle(PrimaryButtonStyle())
+                } else {
+                    Button("Export current data first") { Task { await exportCurrent() } }
+                        .buttonStyle(PrimaryButtonStyle())
+                    Button("Replace with this backup") { confirming = true }
+                        .buttonStyle(PrimaryButtonStyle(role: .destructive))
+                        .disabled(restoring)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
@@ -124,6 +139,7 @@ struct RestoreSheet: View {
             let data = try Data(contentsOf: url)
             let summary = try await session.services.backup.summary(of: data)
             current = try await session.services.backup.currentSummary()
+            identical = try await session.services.backup.matchesCurrentData(data)
             phase = .ready(data, summary)
         } catch {
             phase = .unreadable(ErrorText.describe(error))

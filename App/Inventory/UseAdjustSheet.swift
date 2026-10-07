@@ -114,6 +114,7 @@ struct UseAdjustSheet: View {
                     VStack(spacing: 8) {
                         Text("Only \(QuantityText.format(available, unit)) left.").foregroundStyle(Color.hsAmber)
                         Button("Use all \(QuantityText.format(available, unit))") { amount = available }
+                            .buttonStyle(ChipStyle(selected: true))
                     }
                 } else if let base {
                     let left = mode == .use ? status.lot.quantity - base : base

@@ -359,3 +359,32 @@ private func populatedDatabase(clock: StoreClock = tickingClock()) async throws 
             == "This file isn't a readable backup: missing sites.")
     }
 }
+
+@Suite struct IdenticalBackupTests {
+    @Test func aFreshExportMatchesTheDatabase() async throws {
+        let (db, _) = try await populatedDatabase()
+        let backup = GRDBBackup(database: db)
+        #expect(try await backup.matchesCurrentData(backup.export()))
+    }
+
+    @Test func anyChangeSinceTheExportIsADifference() async throws {
+        let (db, fixture) = try await populatedDatabase()
+        let backup = GRDBBackup(database: db)
+        let file = try await backup.export()
+        try await GRDBLotRepository(database: db).consume(fixture.lots[0].id, amount: 1)
+        #expect(try await backup.matchesCurrentData(file) == false)
+    }
+
+    @Test func rowOrderInTheFileDoesNotMatter() async throws {
+        let (db, _) = try await populatedDatabase()
+        let backup = GRDBBackup(database: db)
+        var document = try json(await backup.export())
+        document["lots"] = Array(try #require(document["lots"] as? [[String: Any]]).reversed())
+        #expect(try await backup.matchesCurrentData(JSONSerialization.data(withJSONObject: document)))
+    }
+
+    @Test func anUnreadableFileThrows() async throws {
+        let db = try AppDatabase.inMemory()
+        await #expect(throws: BackupError.self) { try await GRDBBackup(database: db).matchesCurrentData(Data("nope".utf8)) }
+    }
+}

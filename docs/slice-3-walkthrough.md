@@ -72,7 +72,8 @@ A script for the simulator: what to tap, and what you should see. Expected numbe
 3. Settings → **Restore from backup…** → pick the file. **See:** the file name and export date; "In this file" counts (2 lots, 3 products, 5 locations · 2 people); "Will be replaced" in amber with the current counts (3 lots…).
 4. Tap **Replace with this backup** → confirm. **See:** the sheet closes; the throwaway item is gone; beans (4) and water (2 gal) are back; Runway matches step 5.
 5. Export again → the new file lists the same lots (open both in Files, or just check the counts by restoring the second file: same numbers).
-6. Optional: Restore from a JSON file that isn't a backup. **See:** "Can't restore this file" with the reason and "Nothing was changed."
+6. Restore the file you just exported, without changing anything first. **See:** a green "This backup matches what's on this iPhone" note and a Done button instead of the replace warning.
+7. Optional: Restore from a JSON file that isn't a backup. **See:** "Can't restore this file" with the reason and "Nothing was changed."
 
 ## 7. Developer section
 

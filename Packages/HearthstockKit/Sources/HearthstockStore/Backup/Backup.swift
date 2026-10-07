@@ -41,8 +41,17 @@ public struct GRDBBackup: BackupService {
 
     /// The whole database as a JSON document, stamped with the clock's now.
     public func export() async throws -> Data {
-        let exportedAt = clock.now()
-        let document = try await database.writer.read { db in
+        try BackupDocument.makeEncoder().encode(try await currentDocument(exportedAt: clock.now()))
+    }
+
+    public func matchesCurrentData(_ data: Data) async throws -> Bool {
+        let file = try Self.decode(data)
+        let current = try await currentDocument(exportedAt: file.exportedAt)
+        return file.normalized() == current.normalized()
+    }
+
+    private func currentDocument(exportedAt: Date) async throws -> BackupDocument {
+        try await database.writer.read { db in
             BackupDocument(
                 formatVersion: BackupDocument.currentFormatVersion,
                 exportedAt: exportedAt,
@@ -55,7 +64,6 @@ public struct GRDBBackup: BackupService {
                 shelfLifeOverrides: try ShelfLifeOverrideRecord.order(Column("id")).fetchAll(db)
             )
         }
-        return try BackupDocument.makeEncoder().encode(document)
     }
 
     /// Loads a document produced by `export()` into this database.

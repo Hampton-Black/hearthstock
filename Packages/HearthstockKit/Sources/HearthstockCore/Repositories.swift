@@ -155,6 +155,9 @@ public protocol BackupService: Sendable {
     func summary(of data: Data) async throws -> BackupSummary
     /// What the database holds now.
     func currentSummary() async throws -> BackupSummary
+    /// True when restoring the document would change nothing: it holds exactly the rows the database holds now
+    /// (export time aside). Throws the same errors `restore` would for an unreadable file.
+    func matchesCurrentData(_ data: Data) async throws -> Bool
     /// Replaces everything in the database with the document, in one transaction: a file that fails partway
     /// leaves the existing data as it was.
     func restore(_ data: Data) async throws
