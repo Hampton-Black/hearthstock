@@ -159,3 +159,30 @@ import Testing
         #expect(Self.sections(InventoryQuery(category: .medical), fixture: fixture).isEmpty)
     }
 }
+
+@Suite struct LocationTreeTests {
+    let site = SiteID()
+
+    @Test func possibleParentsLeaveOutTheLocationAndEverythingBelowIt() {
+        let garage = Location(siteID: site, name: "Garage")
+        let shelf = Location(siteID: site, name: "Shelf", parentID: garage.id)
+        let bin = Location(siteID: site, name: "Bin", parentID: shelf.id)
+        let pantry = Location(siteID: site, name: "Pantry")
+        let elsewhere = Location(siteID: SiteID(), name: "Cabin shed")
+        let all = [garage, shelf, bin, pantry, elsewhere]
+
+        #expect(LocationTree.descendants(of: garage.id, in: all) == [shelf.id, bin.id])
+        #expect(LocationTree.descendants(of: bin.id, in: all).isEmpty)
+        #expect(LocationTree.possibleParents(for: shelf, in: all).map { $0.last!.name } == ["Garage", "Pantry"])
+        #expect(LocationTree.possibleParents(for: bin, in: all).map { $0.last!.name } == ["Garage", "Shelf", "Pantry"])
+    }
+
+    @Test func descendantsStopAtACycle() {
+        let a = LocationID(), b = LocationID()
+        let locations = [
+            Location(id: a, siteID: site, name: "A", parentID: b),
+            Location(id: b, siteID: site, name: "B", parentID: a),
+        ]
+        #expect(LocationTree.descendants(of: a, in: locations) == [b])
+    }
+}

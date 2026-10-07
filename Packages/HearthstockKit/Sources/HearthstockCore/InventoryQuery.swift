@@ -122,24 +122,9 @@ public enum Inventory {
         state == .useSoon || state == .caution || state == .inspect
     }
 
-    /// Every location's path from its top-level ancestor, depth first: parents before children, siblings by
-    /// name. Locations in a cycle, or under a missing parent, are left out.
+    /// Every location's path from its top-level ancestor; see `LocationTree.paths`.
     public static func treeOrder(_ locations: [Location]) -> [[Location]] {
-        let ids = Set(locations.map(\.id))
-        let children = Dictionary(grouping: locations, by: { location in
-            location.parentID.flatMap { ids.contains($0) ? $0 : nil }
-        })
-        var result: [[Location]] = []
-        func visit(_ parent: LocationID?, path: [Location]) {
-            let kids = (children[parent] ?? []).sorted(by: nameOrder)
-            for kid in kids where !path.contains(where: { $0.id == kid.id }) {
-                let kidPath = path + [kid]
-                result.append(kidPath)
-                visit(kid.id, path: kidPath)
-            }
-        }
-        visit(nil, path: [])  // roots: no parent, or a parent that isn't in the list
-        return result
+        LocationTree.paths(locations)
     }
 
     static func sorted(_ lots: [LotStatus]) -> [LotStatus] {
@@ -161,10 +146,5 @@ public enum Inventory {
     private static func rank(_ status: LotStatus) -> Int {
         guard let state = status.state else { return -1 }
         return severityOrder.firstIndex(of: state) ?? severityOrder.count
-    }
-
-    private static func nameOrder(_ lhs: Location, _ rhs: Location) -> Bool {
-        let order = lhs.name.localizedStandardCompare(rhs.name)
-        return order == .orderedSame ? lhs.id.rawValue.uuidString < rhs.id.rawValue.uuidString : order == .orderedAscending
     }
 }
