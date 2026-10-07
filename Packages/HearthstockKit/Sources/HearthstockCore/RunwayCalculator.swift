@@ -1,6 +1,6 @@
 import Foundation
 
-/// Days of supply as a range: `low` counts only Good lots, `high` adds Caution and Inspect.
+/// Days of supply as a range: `low` counts only in-date lots (Good and Use soon), `high` adds Caution and Inspect.
 public struct RunwayRange: Hashable, Sendable {
     public var low: Double
     public var high: Double
@@ -14,9 +14,9 @@ public struct RunwayRange: Hashable, Sendable {
 /// One supply category's runway. Amounts are in the category's runway unit: kcal for food, gallons for water.
 public struct CategoryRunway: Hashable, Sendable {
     public var category: Category
-    /// Amount in Good lots.
+    /// Amount in Good and Use soon lots.
     public var lowAmount: Double
-    /// Amount in Good, Caution and Inspect lots.
+    /// Amount in Good, Use soon, Caution and Inspect lots.
     public var highAmount: Double
     /// What the site's occupants need per day.
     public var dailyNeed: Double
@@ -89,7 +89,8 @@ public enum RunwayCalculator {
     ///
     /// Counts only unarchived lots whose location resolves to `site`, skipping lots inside a kit
     /// that doesn't count toward site runway. Occupants from other sites are ignored. Shelf-life
-    /// overrides are looked up by product and lot ID; see `ShelfLifeProfileResolver`.
+    /// overrides are looked up by product and lot ID; see `ShelfLifeProfileResolver`. Each lot's state is
+    /// `LotStatusEvaluator`'s, under the site's notice window.
     public static func runway(
         for site: Site,
         occupants: [Person],
@@ -103,13 +104,6 @@ public enum RunwayCalculator {
         on today: CalendarDate,
         targets: [Double] = defaultTargets
     ) -> SiteRunway {
-        let resolver = ShelfLifeProfileResolver(
-            table: profiles, productOverrides: productShelfLifeOverrides, lotOverrides: lotShelfLifeOverrides)
-        let productsByID = Dictionary(products.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let locationsByID = Dictionary(locations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let kitsByID = Dictionary(kits.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let kitsByLocationID = Dictionary(kits.map { ($0.locationID, $0) }, uniquingKeysWith: { first, _ in first })
-
         let people = occupants.filter { $0.siteID == site.id }
         var food = CategoryRunway(
             category: .food, lowAmount: 0, highAmount: 0, dailyNeed: people.reduce(0) { $0 + $1.kcalPerDay })
@@ -121,37 +115,28 @@ public enum RunwayCalculator {
         var problems: [RunwayProblem] = []
         if people.isEmpty { problems.append(.noOccupants) }
 
-        for lot in lots where !lot.archived {
-            guard let chain = locationChain(from: lot.locationID, locations: locationsByID) else {
-                problems.append(.unresolvedLocation(lot.id))
+        let statuses = LotStatusEvaluator.statuses(
+            for: site, lots: lots, products: products, locations: locations, kits: kits,
+            productShelfLifeOverrides: productShelfLifeOverrides, lotShelfLifeOverrides: lotShelfLifeOverrides,
+            profiles: profiles, on: today)
+        // Problems are reported in the order the checks run: location, then kit exclusion, then product, then
+        // category, then profile. A lot in an excluded kit, or of a non-runway category, reports nothing.
+        for status in statuses {
+            if case .unresolvedLocation(let id)? = status.problem {
+                problems.append(.unresolvedLocation(id))
                 continue
             }
-            guard chain[0].siteID == site.id else { continue }
-            let excludedByKit = chain.contains { location in
-                guard let kit = location.kitID.flatMap({ kitsByID[$0] }) ?? kitsByLocationID[location.id] else {
-                    // A location marked as a kit whose kit is unknown is treated as a kit that doesn't count.
-                    return location.kitID != nil
-                }
-                return !kit.countsTowardSiteRunway
-            }
-            if excludedByKit { continue }
-
-            guard let product = productsByID[lot.productID] else {
-                problems.append(.missingProduct(lot.id))
+            guard status.countsTowardSiteRunway else { continue }
+            guard let product = status.product else {
+                problems.append(.missingProduct(status.lot.id))
                 continue
             }
             guard product.category == .food || product.category == .water else { continue }
-            guard let profile = resolver.profile(for: lot, product: product) else {
-                problems.append(.missingProfile(lot.id, product.shelfLifeProfileKey))
+            guard let state = status.state else {
+                if let problem = status.problem { problems.append(problem) }
                 continue
             }
-
-            let climate = StorageClimate(lot: lot, chain: chain)
-            let humidity = chain.lazy.compactMap(\.humidity).first ?? .dry
-            let state = ShelfLifeEvaluator.evaluate(
-                lot, profile: profile, climate: climate.climateClass, humidity: humidity,
-                windowMultiplier: climate.windowMultiplier, on: today
-            ).state
+            let lot = status.lot
 
             switch product.category {
             case .food:
@@ -221,7 +206,7 @@ public enum RunwayCalculator {
 extension CategoryRunway {
     mutating func add(_ amount: Double, state: LotState) {
         switch state {
-        case .good:
+        case .good, .useSoon:
             lowAmount += amount
             highAmount += amount
         case .caution, .inspect:

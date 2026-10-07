@@ -3,6 +3,8 @@ import Foundation
 /// Where a lot stands on a given day. Derived, never stored.
 public enum LotState: String, Hashable, Sendable, Codable, CaseIterable {
     case good
+    /// Within the notice window before the printed date: a nudge, not a warning. Counts fully toward runway.
+    case useSoon
     /// Past best-by, inside the extension window: eat or rotate first.
     case caution
     /// Final 20% of the window: check before use.
@@ -43,6 +45,10 @@ public enum ShelfLifeEvaluator {
     /// `windowMultiplier`, when set, replaces the climate class's multiplier (a location's override).
     /// The class still decides power dependence.
     ///
+    /// `noticeWindowDays` is the site's Use soon window: a lot whose window starts at its printed date is Use soon
+    /// from that many days before the printed date through the printed date itself. Zero (the default) turns
+    /// Use soon off, which is how Slice 1 evaluated lots.
+    ///
     /// Refrigerated and frozen lots are evaluated as climate controlled and flagged power-dependent
     /// until per-product cold-storage profiles exist.
     public static func evaluate(
@@ -51,6 +57,7 @@ public enum ShelfLifeEvaluator {
         climate: ClimateClass,
         humidity: Humidity = .dry,
         windowMultiplier: Double? = nil,
+        noticeWindowDays: Int = 0,
         on today: CalendarDate
     ) -> ShelfLifeEvaluation {
         var flags: Set<LotFlag> = []
@@ -65,24 +72,33 @@ public enum ShelfLifeEvaluator {
             flags.insert(.humidityRisk)
         }
 
-        guard let window = window(for: lot, profile: profile, multiplier: multiplier) else {
+        guard var window = window(for: lot, profile: profile, multiplier: multiplier) else {
             if profile.dateType != .none && lot.printedDate == nil {
                 flags.insert(.missingDate)
             }
             return ShelfLifeEvaluation(state: .good, usableBy: nil, flags: flags)
         }
+        if noticeWindowDays > 0, window.startsAtPrintedDate {
+            window.useSoonFrom = window.goodThrough.adding(days: -noticeWindowDays)
+        }
         return ShelfLifeEvaluation(state: window.state(on: today), usableBy: window.usableBy, flags: flags)
     }
 
-    /// A span of days ending on `usableBy`. Good through `goodThrough`, then Caution (if
-    /// `hasCaution`) until the last 20%, then Inspect, then Expired.
+    /// A span of days ending on `usableBy`. Good through `goodThrough` (Use soon from `useSoonFrom`, when set),
+    /// then Caution (if `hasCaution`) until the last 20%, then Inspect, then Expired.
     struct Window {
         var goodThrough: CalendarDate
         var usableBy: CalendarDate
         var hasCaution: Bool
+        /// True when `goodThrough` is the lot's printed date, so the notice window applies.
+        var startsAtPrintedDate = false
+        var useSoonFrom: CalendarDate?
 
         func state(on today: CalendarDate) -> LotState {
-            if today <= goodThrough { return .good }
+            if today <= goodThrough {
+                if let useSoonFrom, today >= useSoonFrom { return .useSoon }
+                return .good
+            }
             if today > usableBy { return .expired }
             let length = goodThrough.days(until: usableBy)
             let inspectDays = Int((Double(length) * inspectFraction).rounded(.up))
@@ -96,13 +112,13 @@ public enum ShelfLifeEvaluator {
         switch profile.dateType {
         case .useBy:
             guard let printed = lot.printedDate else { return nil }
-            return Window(goodThrough: printed, usableBy: printed, hasCaution: false)
+            return Window(goodThrough: printed, usableBy: printed, hasCaution: false, startsAtPrintedDate: true)
 
         case .bestBy, .none:
             var candidates: [Window] = []
             if profile.dateType == .bestBy, let printed = lot.printedDate {
                 let end = scaled(from: printed, months: profile.extensionMonths ?? 0, by: multiplier)
-                candidates.append(Window(goodThrough: printed, usableBy: end, hasCaution: true))
+                candidates.append(Window(goodThrough: printed, usableBy: end, hasCaution: true, startsAtPrintedDate: true))
             }
             if lot.packaging == .mylarO2 || lot.packaging == .bucket, let months = profile.packagedLifeMonths {
                 let end = scaled(from: lot.acquiredDate, months: months, by: multiplier)

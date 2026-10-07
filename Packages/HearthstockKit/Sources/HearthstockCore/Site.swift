@@ -2,12 +2,32 @@ import Foundation
 
 /// An independent place with its own runway (Main house, Bug-out cabin).
 public struct Site: Hashable, Sendable, Codable, Identifiable {
+    /// The spec's default Use soon notice window.
+    public static let defaultNoticeWindowDays = 30
+
     public let id: SiteID
     public var name: String
+    /// How many days before its printed date a lot turns Use soon. A positive whole number; the spec's
+    /// "per household" setting.
+    public var noticeWindowDays: Int
 
-    public init(id: SiteID = SiteID(), name: String) {
+    public init(id: SiteID = SiteID(), name: String, noticeWindowDays: Int = Site.defaultNoticeWindowDays) {
         self.id = id
         self.name = name
+        self.noticeWindowDays = noticeWindowDays
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, noticeWindowDays
+    }
+
+    /// A site encoded before the notice window existed decodes with the default.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(SiteID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        noticeWindowDays = try container.decodeIfPresent(Int.self, forKey: .noticeWindowDays)
+            ?? Site.defaultNoticeWindowDays
     }
 }
 
