@@ -112,7 +112,7 @@ struct UseAdjustSheet: View {
             Group {
                 if over {
                     VStack(spacing: 8) {
-                        Text("Only \(QuantityText.format(available, unit)) is left.").foregroundStyle(Color.hsAmber)
+                        Text("Only \(QuantityText.format(available, unit)) left.").foregroundStyle(Color.hsAmber)
                         Button("Use all \(QuantityText.format(available, unit))") { amount = available }
                     }
                 } else if let base {
