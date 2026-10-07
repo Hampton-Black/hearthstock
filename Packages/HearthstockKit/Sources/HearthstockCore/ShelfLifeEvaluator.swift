@@ -28,11 +28,27 @@ public struct ShelfLifeEvaluation: Hashable, Sendable {
     /// Last usable day, inclusive; nil when nothing dates the lot.
     public var usableBy: CalendarDate?
     public var flags: Set<LotFlag>
+    /// The window's phases, for explaining a state and drawing a timeline. All nil when nothing dates the lot.
+    public var timeline: Timeline?
 
-    public init(state: LotState, usableBy: CalendarDate?, flags: Set<LotFlag> = []) {
+    /// When each phase of the lot's window starts. Good runs from `start` through `goodThrough`; Use soon (if any)
+    /// is the end of that span; Caution (if `hasCaution`) follows until `inspectFrom`; the window ends on
+    /// `usableBy`.
+    public struct Timeline: Hashable, Sendable {
+        /// The printed date for a printed-date window, else the acquired date.
+        public var goodThrough: CalendarDate
+        public var useSoonFrom: CalendarDate?
+        public var inspectFrom: CalendarDate
+        public var hasCaution: Bool
+        /// True when the window is measured from the printed date (otherwise from the acquired date).
+        public var fromPrintedDate: Bool
+    }
+
+    public init(state: LotState, usableBy: CalendarDate?, flags: Set<LotFlag> = [], timeline: Timeline? = nil) {
         self.state = state
         self.usableBy = usableBy
         self.flags = flags
+        self.timeline = timeline
     }
 }
 
@@ -81,7 +97,11 @@ public enum ShelfLifeEvaluator {
         if noticeWindowDays > 0, window.startsAtPrintedDate {
             window.useSoonFrom = window.goodThrough.adding(days: -noticeWindowDays)
         }
-        return ShelfLifeEvaluation(state: window.state(on: today), usableBy: window.usableBy, flags: flags)
+        let timeline = ShelfLifeEvaluation.Timeline(
+            goodThrough: window.goodThrough, useSoonFrom: window.useSoonFrom, inspectFrom: window.inspectFrom,
+            hasCaution: window.hasCaution, fromPrintedDate: window.startsAtPrintedDate)
+        return ShelfLifeEvaluation(
+            state: window.state(on: today), usableBy: window.usableBy, flags: flags, timeline: timeline)
     }
 
     /// A span of days ending on `usableBy`. Good through `goodThrough` (Use soon from `useSoonFrom`, when set),
@@ -100,11 +120,15 @@ public enum ShelfLifeEvaluator {
                 return .good
             }
             if today > usableBy { return .expired }
+            if today >= inspectFrom { return .inspect }
+            return hasCaution ? .caution : .good
+        }
+
+        /// First day of the final 20% of the window.
+        var inspectFrom: CalendarDate {
             let length = goodThrough.days(until: usableBy)
             let inspectDays = Int((Double(length) * inspectFraction).rounded(.up))
-            let firstInspectDay = usableBy.adding(days: 1 - inspectDays)
-            if today >= firstInspectDay { return .inspect }
-            return hasCaution ? .caution : .good
+            return usableBy.adding(days: 1 - inspectDays)
         }
     }
 

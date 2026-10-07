@@ -165,7 +165,10 @@ struct ProductForm: View {
         .navigationTitle(isEditing ? "Edit product" : "New product")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            if isEditing {
+                // Editing is a sheet; a new product is pushed from the picker and goes back with the back button.
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
                     .disabled(model.draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

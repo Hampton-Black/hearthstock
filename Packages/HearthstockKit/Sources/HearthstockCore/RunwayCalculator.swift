@@ -119,41 +119,21 @@ public enum RunwayCalculator {
             for: site, lots: lots, products: products, locations: locations, kits: kits,
             productShelfLifeOverrides: productShelfLifeOverrides, lotShelfLifeOverrides: lotShelfLifeOverrides,
             profiles: profiles, on: today)
-        // Problems are reported in the order the checks run: location, then kit exclusion, then product, then
-        // category, then profile. A lot in an excluded kit, or of a non-runway category, reports nothing.
+        // Problems are reported in the order `RunwayEffect` checks: location, then kit exclusion, then product,
+        // then category, then profile. A lot in an excluded kit, or of a non-runway category, reports nothing.
         for status in statuses {
-            if case .unresolvedLocation(let id)? = status.problem {
-                problems.append(.unresolvedLocation(id))
-                continue
-            }
-            guard status.countsTowardSiteRunway else { continue }
-            guard let product = status.product else {
-                problems.append(.missingProduct(status.lot.id))
-                continue
-            }
-            guard product.category == .food || product.category == .water else { continue }
-            guard let state = status.state else {
-                if let problem = status.problem { problems.append(problem) }
-                continue
-            }
-            let lot = status.lot
-
-            switch product.category {
-            case .food:
-                guard let kcal = product.kcalPerBaseUnit else {
-                    lotsMissingNutrition.append(lot.id)
-                    continue
-                }
-                food.add(lot.quantity * kcal, state: state)
-            case .water:
-                if let galPerUnit = product.potableWaterGalPerBaseUnit, galPerUnit > 0 {
-                    water.add(lot.quantity * galPerUnit, state: state)
-                } else if product.unitKind == .volume {
-                    if state != .expired { untreatedNonPotableGal += lot.quantity }
-                } else {
-                    lotsMissingWaterVolume.append(lot.id)
-                }
-            default:
+            switch RunwayEffect(status) {
+            case .unavailable(let problem):
+                problems.append(problem)
+            case .counts(let category, let amount, _, let lowEnd):
+                if category == .food { food.add(amount, lowEnd: lowEnd) } else { water.add(amount, lowEnd: lowEnd) }
+            case .untreatedWater(let gallons):
+                untreatedNonPotableGal += gallons
+            case .missingNutrition:
+                lotsMissingNutrition.append(status.lot.id)
+            case .missingWaterVolume:
+                lotsMissingWaterVolume.append(status.lot.id)
+            case .expired, .excludedByKit, .noRunway:
                 continue
             }
         }
@@ -204,15 +184,8 @@ public enum RunwayCalculator {
 }
 
 extension CategoryRunway {
-    mutating func add(_ amount: Double, state: LotState) {
-        switch state {
-        case .good, .useSoon:
-            lowAmount += amount
-            highAmount += amount
-        case .caution, .inspect:
-            highAmount += amount
-        case .expired:
-            break
-        }
+    mutating func add(_ amount: Double, lowEnd: Bool) {
+        if lowEnd { lowAmount += amount }
+        highAmount += amount
     }
 }

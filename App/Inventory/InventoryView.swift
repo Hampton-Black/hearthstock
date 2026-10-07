@@ -47,6 +47,7 @@ struct InventoryView: View {
                 }
             }
             .navigationTitle("Inventory")
+            .addItemButton()
         }
         .task {
             let model = InventoryModel(profiles: session.services.profiles)

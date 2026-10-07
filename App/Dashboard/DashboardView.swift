@@ -41,6 +41,7 @@ struct DashboardView: View {
                 }
             }
             .navigationTitle("Runway")
+            .addItemButton()
         }
         .task {
             let model = DashboardModel(profiles: session.services.profiles)
