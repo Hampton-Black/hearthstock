@@ -65,19 +65,22 @@ Humidity is its own flag because it affects packaging, not temperature: a humid 
 
 | State | Rule | Shown as |
 | --- | --- | --- |
-| Good | Before printed date | Normal |
+| Good | Before printed date and outside the notice window, or no printed date | Normal |
+| Use soon | Within the notice window before the printed date (default 30 days, set per household) | Neutral badge with an amber clock: a nudge, not a warning. Counts fully toward runway |
 | Caution | Past best-by, inside the extension window | Amber: eat or rotate first |
 | Inspect | Final 20% of the window | Amber with a check prompt; bulging, rusted or leaking cans are discarded regardless of date |
 | Expired | Past the window, or past any use-by date | Red, excluded from runway |
+
+Use-by items skip Caution and Inspect: Good → Use soon → Expired. Every state badge pairs a word and an icon with its color, so states never rely on color alone.
 
 **Capabilities.** Some products add no supply of their own; they unlock, replenish, extend or enable supply. A filter, solar panel, stove or box of oxygen absorbers is a Product with role *capability* (or *consumable*, for tabs and absorbers) plus a Capability record. Capacity is consumed over time: a filter rated for 1,000 gallons tracks gallons used, and a tab count converts to gallons treatable.
 
 ## Runway dashboard
 
-Each site has its own runway. Effective runway is the shortest of that site's supply runways, shown as a range: the low end counts only in-date stock, the high end adds Caution and Inspect lots. Plan around the low number; the gap between the two is how much stock needs rotating soon. The category that sets the low end is the top priority.
+Each site has its own runway. Effective runway is the shortest of that site's supply runways, shown as a range: the low end counts only in-date stock (Good and Use soon lots), the high end adds Caution and Inspect lots. Plan around the low number; the gap between the two is how much stock needs rotating soon. The category that sets the low end is the top priority.
 
 ```latex
-\text{food days}_{\text{low}} = \frac{\sum_{\text{Good lots}} \text{qty} \times \text{kcal per unit}}{\sum_{\text{occupants}} \text{kcal per day}} \qquad \text{food days}_{\text{high}} = \frac{\sum_{\text{Good + Caution + Inspect lots}} \text{qty} \times \text{kcal per unit}}{\sum_{\text{occupants}} \text{kcal per day}}
+\text{food days}_{\text{low}} = \frac{\sum_{\text{Good + Use soon lots}} \text{qty} \times \text{kcal per unit}}{\sum_{\text{occupants}} \text{kcal per day}} \qquad \text{food days}_{\text{high}} = \frac{\sum_{\text{Good + Use soon + Caution + Inspect lots}} \text{qty} \times \text{kcal per unit}}{\sum_{\text{occupants}} \text{kcal per day}}
 ```
 
 ```latex
@@ -103,7 +106,7 @@ Each site has its own runway. Effective runway is the shortest of that site's su
 **"Focus next" list**, in priority order:
 
 1. The limiting category, with the amount needed to reach the next target (for example, "+18 gal water to reach 14 days"). Targets default to 3, 14 and 30 days.
-2. Lots in Caution or Inspect (eat or rotate), soonest first.
+2. Lots in Caution or Inspect (eat or rotate), soonest first, then Use soon lots by printed date.
 3. Missing capabilities from the readiness templates (for example, "No backup water treatment") and cooking shortfalls ("Rice exceeds cooking fuel by \~40%").
 4. Kit gaps: missing or short requirements, and expired items inside kits.
 5. Overdue maintenance tasks and capabilities near their rated limit (a filter at 90% of its gallons).
@@ -136,9 +139,9 @@ Five tabs cover v1: Dashboard, Inventory, Kits, Tasks, Settings. Adding stock is
 | Screen | Purpose | Notes |
 | --- | --- | --- |
 | Dashboard | Runway per category, effective runway, Focus next list | Tapping a category drills into its lots |
-| Inventory | All lots, grouped by location or category | Search, filter by expiring soon, swipe to consume or adjust |
+| Inventory | All lots, grouped by location or category | Search, filter by expiring soon (Use soon, Caution and Inspect lots), swipe to consume or adjust |
 | Add / Scan | Create a lot, and a product if new | Camera opens by default; manual entry is one tap away |
-| Kits | Each kit against its template, plus household readiness checklists | Green / short / missing per requirement; "Mark inspected" |
+| Kits | Each kit against its template, plus household readiness checklists | Complete / use soon / short / missing per requirement; "Mark inspected" |
 | Tasks | Maintenance due and overdue | Complete resets the interval |
 | Settings | Household, defaults, targets, export | CSV/JSON export and import for backup |
 
