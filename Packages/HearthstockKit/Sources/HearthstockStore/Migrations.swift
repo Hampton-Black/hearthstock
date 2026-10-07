@@ -4,7 +4,15 @@ extension DatabaseMigrator {
     /// Registers every migration in order. Append new ones at the end; never edit one that has shipped.
     mutating func registerHearthstockMigrations() {
         registerMigration("v1_initial", migrate: createInitialSchema)
+        registerMigration("v2_site_notice_window", migrate: addSiteNoticeWindow)
     }
+}
+
+/// Slice 3: each site's Use soon notice window, in whole days.
+private func addSiteNoticeWindow(_ db: Database) throws {
+    try db.execute(sql: """
+        ALTER TABLE site ADD COLUMN noticeWindowDays INTEGER NOT NULL DEFAULT 30 CHECK (noticeWindowDays > 0)
+        """)
 }
 
 /// Everything Slice 1 models, saved to SQLite.

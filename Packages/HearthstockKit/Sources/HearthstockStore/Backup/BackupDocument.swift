@@ -5,7 +5,10 @@ import Foundation
 /// timestamps travel with the rows so a restore changes nothing. Add a field or table only with a new
 /// `formatVersion`.
 struct BackupDocument: Codable, Equatable {
-    static let currentFormatVersion = 1
+    /// 2 added `noticeWindowDays` to sites.
+    static let currentFormatVersion = 2
+    /// Versions `import` and `restore` read. Fields a version lacks get the defaults its migration gave them.
+    static let readableFormatVersions = 1...currentFormatVersion
 
     var formatVersion: Int
     var exportedAt: Date

@@ -31,6 +31,7 @@ public struct ShelfLifeOverride: Hashable, Sendable, Codable {
     func applied(to profile: ShelfLifeProfile) -> ShelfLifeProfile {
         ShelfLifeProfile(
             key: profile.key,
+            name: profile.name,
             dateType: dateType ?? profile.dateType,
             extensionMonths: extensionMonths ?? profile.extensionMonths,
             packagedLifeMonths: packagedLifeMonths ?? profile.packagedLifeMonths,

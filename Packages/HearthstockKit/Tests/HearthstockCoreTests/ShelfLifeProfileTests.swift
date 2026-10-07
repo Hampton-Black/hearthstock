@@ -56,12 +56,34 @@ import Testing
 
     @Test func duplicateKeysAreRejected() {
         let json = Data("""
-        [{"key": "flour", "dateType": "bestBy", "extensionMonths": 6},
-         {"key": "flour", "dateType": "bestBy", "extensionMonths": 9}]
+        [{"key": "flour", "name": "Flour", "dateType": "bestBy", "extensionMonths": 6},
+         {"key": "flour", "name": "Flour", "dateType": "bestBy", "extensionMonths": 9}]
         """.utf8)
         #expect(throws: ShelfLifeProfileTable.LoadError.duplicateKey("flour")) {
             try ShelfLifeProfileTable(jsonData: json)
         }
+    }
+
+    @Test func everyBundledProfileHasAName() throws {
+        for profile in try ShelfLifeProfileTable.bundledDefaults().profiles {
+            #expect(!profile.name.trimmingCharacters(in: .whitespaces).isEmpty, "\(profile.key)")
+            #expect(profile.name != profile.key.rawValue, "\(profile.key) reads as a key")
+        }
+    }
+
+    @Test(arguments: [
+        #"[{"key": "flour", "dateType": "bestBy", "extensionMonths": 6}]"#,
+        #"[{"key": "flour", "name": "  ", "dateType": "bestBy", "extensionMonths": 6}]"#,
+    ])
+    func aProfileWithoutANameIsRejected(json: String) {
+        #expect(throws: ShelfLifeProfileTable.LoadError.missingName("flour")) {
+            try ShelfLifeProfileTable(jsonData: Data(json.utf8))
+        }
+    }
+
+    @Test func overridesKeepTheProfileName() throws {
+        let profile = try #require(try ShelfLifeProfileTable.bundledDefaults()["white_rice"])
+        #expect(ShelfLifeOverride(extensionMonths: 1).applied(to: profile).name == "White rice")
     }
 
     @Test func unknownDateTypeIsRejected() {

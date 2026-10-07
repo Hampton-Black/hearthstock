@@ -23,6 +23,7 @@ public struct GRDBSiteRepository: SiteRepository {
     }
 
     public func save(_ site: Site) async throws {
+        guard site.noticeWindowDays > 0 else { throw RepositoryError.invalidNoticeWindow(site.noticeWindowDays) }
         try await database.writer.write { [clock] db in
             try SiteRecord(site).save(db, clock: clock)
         }

@@ -51,7 +51,7 @@ private func rowCount(_ db: AppDatabase) async throws -> Int {
         let data = try await GRDBBackup(database: db, clock: .fixed(exportTime)).export()
         let document = try json(data)
 
-        #expect(document["formatVersion"] as? Int == 1)
+        #expect(document["formatVersion"] as? Int == 2)
         #expect(document["exportedAt"] as? String == "2027-01-15T08:00:00.500Z")
         #expect((document["sites"] as? [Any])?.count == 1)
         #expect((document["lots"] as? [Any])?.count == fixture.lots.count)
@@ -127,7 +127,7 @@ private func rowCount(_ db: AppDatabase) async throws -> Int {
         }
     }
 
-    @Test(arguments: [0, 2, 99, -1])
+    @Test(arguments: [0, 3, 99, -1])
     func unknownFormatVersionFailsCleanly(version: Int) async throws {
         let (source, _) = try await populatedDatabase()
         var document = try json(await GRDBBackup(database: source).export())
@@ -142,9 +142,9 @@ private func rowCount(_ db: AppDatabase) async throws -> Int {
     }
 
     @Test func aVersionFromTheFutureIsRefusedBeforeItsBodyIsRead() async throws {
-        let data = Data(#"{"formatVersion": 2, "somethingNew": [1, 2, 3]}"#.utf8)
+        let data = Data(#"{"formatVersion": 3, "somethingNew": [1, 2, 3]}"#.utf8)
         let target = try AppDatabase.inMemory()
-        await #expect(throws: BackupError.unsupportedFormatVersion(2)) {
+        await #expect(throws: BackupError.unsupportedFormatVersion(3)) {
             try await GRDBBackup(database: target).import(data)
         }
     }

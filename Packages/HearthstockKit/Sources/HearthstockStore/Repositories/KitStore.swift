@@ -44,4 +44,15 @@ public struct GRDBKitRepository: KitRepository {
             try location.update(db, clock: clock)
         }
     }
+
+    public func delete(_ id: KitID) async throws {
+        try await database.writer.write { [clock] db in
+            guard let kit = try KitRecord.fetchOne(db, key: id.stored) else { return }
+            for var location in try LocationRecord.filter(Column("kitId") == kit.id).fetchAll(db) {
+                location.kitId = nil
+                try location.update(db, clock: clock)
+            }
+            _ = try kit.delete(db)
+        }
+    }
 }

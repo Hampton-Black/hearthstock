@@ -19,13 +19,20 @@ public enum RepositoryError: Error, Hashable, Sendable {
     case lotArchived(LotID)
     /// More was requested than the lot holds; the lot is unchanged.
     case insufficientQuantity(LotID, available: Double, requested: Double)
+    /// A site's notice window must be a whole number of days greater than zero.
+    case invalidNoticeWindow(Int)
+    /// A lot saved with a new product must be a lot of that product.
+    case lotProductMismatch(LotID, ProductID)
+    /// The product has lots, whose quantities are stored in its base unit, so its unit kind can't change.
+    case unitKindLocked(ProductID)
 }
 
 public protocol SiteRepository: Sendable {
     /// Every site, oldest first.
     func list() async throws -> [Site]
     func get(_ id: SiteID) async throws -> Site?
-    /// Inserts the site, or renames it if it exists.
+    /// Inserts the site, or updates its name and notice window if it exists. Throws
+    /// `RepositoryError.invalidNoticeWindow` unless the window is at least one day.
     func save(_ site: Site) async throws
     /// The oldest site, creating one named "Home" first if none exists. Safe to call repeatedly.
     func ensureDefaultSite() async throws -> Site
@@ -48,8 +55,16 @@ public protocol LocationRepository: Sendable {
 public protocol ProductRepository: Sendable {
     func get(_ id: ProductID) async throws -> Product?
     func find(barcode: String) async throws -> Product?
-    /// Products whose name contains `name`, ignoring ASCII case, ordered by name. An empty `name` matches all.
+    /// Products whose name contains `name`, ignoring ASCII case, ordered by name. An empty `name` matches all,
+    /// so there's no separate `list()`.
     func search(name: String) async throws -> [Product]
+    /// Every product, most recently used first: by the newest of its own last edit and its lots' creation, so a
+    /// product just added to or just created comes first. Ties go by name.
+    func listByRecentUse() async throws -> [Product]
+    /// Whether any lot (archived ones and other sites' included) is of this product.
+    func hasLots(_ id: ProductID) async throws -> Bool
+    /// Inserts or updates the product. Throws `RepositoryError.unitKindLocked` when an update changes the unit
+    /// kind of a product that has lots.
     func save(_ product: Product) async throws
 }
 
@@ -58,6 +73,13 @@ public protocol LotRepository: Sendable {
     /// Inserts or updates the lot. Its site is its location's site; throws
     /// `RepositoryError.locationNotFound` if the location doesn't exist.
     func save(_ lot: Lot) async throws
+    /// Inserts a new product and a first lot of it in one transaction: if either is refused, neither is saved.
+    /// Throws `RepositoryError.lotProductMismatch` unless `lot.productID` is `product.id`, and
+    /// `.locationNotFound` as `save` does.
+    func save(_ lot: Lot, newProduct product: Product) async throws
+    /// Removes the lot and its shelf-life override, for entry mistakes (using a lot up archives it instead).
+    /// Deleting a lot that doesn't exist does nothing.
+    func delete(_ id: LotID) async throws
     /// Takes `amount` (in the product's base unit) out of the lot and returns it as stored. A lot that reaches
     /// zero is archived. Throws `RepositoryError.insufficientQuantity` if `amount` exceeds what's left, leaving
     /// the lot unchanged.
@@ -92,6 +114,50 @@ public protocol KitRepository: Sendable {
     /// Inserts or updates the kit and marks its location as that kit's location. The home site is the
     /// location's site; throws `RepositoryError.locationNotFound` if the location doesn't exist.
     func save(_ kit: Kit) async throws
+    /// Removes the kit and clears its location's kit link, so the location is an ordinary one again (and can be
+    /// deleted once empty). Deleting a kit that doesn't exist does nothing.
+    func delete(_ id: KitID) async throws
+}
+
+/// What a backup file holds, or what the database holds now, in counts a person can check before a restore.
+public struct BackupSummary: Hashable, Sendable {
+    public var formatVersion: Int
+    /// Nil for the live database.
+    public var exportedAt: Date?
+    public var siteNames: [String]
+    public var people: Int
+    public var locations: Int
+    public var products: Int
+    /// Unarchived lots.
+    public var lots: Int
+    public var archivedLots: Int
+
+    public init(
+        formatVersion: Int, exportedAt: Date?, siteNames: [String], people: Int, locations: Int, products: Int,
+        lots: Int, archivedLots: Int
+    ) {
+        self.formatVersion = formatVersion
+        self.exportedAt = exportedAt
+        self.siteNames = siteNames
+        self.people = people
+        self.locations = locations
+        self.products = products
+        self.lots = lots
+        self.archivedLots = archivedLots
+    }
+}
+
+/// Whole-database backup as one JSON document.
+public protocol BackupService: Sendable {
+    /// Every table as a versioned JSON document.
+    func export() async throws -> Data
+    /// Reads a document without writing anything; throws the same errors `restore` would for an unreadable file.
+    func summary(of data: Data) async throws -> BackupSummary
+    /// What the database holds now.
+    func currentSummary() async throws -> BackupSummary
+    /// Replaces everything in the database with the document, in one transaction: a file that fails partway
+    /// leaves the existing data as it was.
+    func restore(_ data: Data) async throws
 }
 
 /// Everything `RunwayCalculator` needs for one site.

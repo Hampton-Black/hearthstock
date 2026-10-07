@@ -35,13 +35,33 @@ public struct GRDBLotRepository: LotRepository {
 
     public func save(_ lot: Lot) async throws {
         try await database.writer.write { [clock] db in
-            guard let location = try LocationRecord.fetchOne(db, key: lot.locationID.stored) else {
-                throw RepositoryError.locationNotFound(lot.locationID)
-            }
-            let siteID: SiteID = try ColumnDecoder(table: LocationRecord.databaseTableName)
-                .id("siteId", location.siteId)
-            try LotRecord(lot, siteID: siteID).save(db, clock: clock)
+            try Self.save(lot, db: db, clock: clock)
         }
+    }
+
+    public func save(_ lot: Lot, newProduct product: Product) async throws {
+        guard lot.productID == product.id else { throw RepositoryError.lotProductMismatch(lot.id, product.id) }
+        try await database.writer.write { [clock] db in
+            // Throwing anywhere in here rolls back the product insert too.
+            try ProductRecord(product).insert(db, clock: clock)
+            try Self.save(lot, db: db, clock: clock)
+        }
+    }
+
+    public func delete(_ id: LotID) async throws {
+        // The lot's shelf-life override goes with it (ON DELETE CASCADE).
+        _ = try await database.writer.write { db in
+            try LotRecord.deleteOne(db, key: id.stored)
+        }
+    }
+
+    private static func save(_ lot: Lot, db: Database, clock: StoreClock) throws {
+        guard let location = try LocationRecord.fetchOne(db, key: lot.locationID.stored) else {
+            throw RepositoryError.locationNotFound(lot.locationID)
+        }
+        let siteID: SiteID = try ColumnDecoder(table: LocationRecord.databaseTableName)
+            .id("siteId", location.siteId)
+        try LotRecord(lot, siteID: siteID).save(db, clock: clock)
     }
 
     public func consume(_ id: LotID, amount: Double) async throws -> Lot {

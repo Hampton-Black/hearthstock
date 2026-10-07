@@ -1,8 +1,9 @@
 import Foundation
 import GRDB
+import HearthstockCore
 
-/// Why an import was refused. Nothing is written in any of these cases.
-public enum BackupError: Error, Hashable, Sendable {
+/// Why an import or restore was refused. Nothing is written in any of these cases.
+public enum BackupError: Error, Hashable, Sendable, LocalizedError {
     /// Import only fills an empty database; this one already holds rows.
     case databaseNotEmpty
     /// The file's `formatVersion` isn't one this build reads.
@@ -10,6 +11,17 @@ public enum BackupError: Error, Hashable, Sendable {
     /// The file isn't a readable backup, or its rows break the schema's rules (a lot in a missing
     /// location, a duplicate ID). The message says what.
     case invalidDocument(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .databaseNotEmpty:
+            "The database already holds data, so the backup wasn't imported."
+        case .unsupportedFormatVersion(let version):
+            "This backup is format version \(version), which this version of the app can't read."
+        case .invalidDocument(let reason):
+            "This file isn't a readable backup: \(reason)."
+        }
+    }
 }
 
 /// Whole-database backup to and from one versioned JSON document.
@@ -18,7 +30,7 @@ public enum BackupError: Error, Hashable, Sendable {
 /// transaction, so a file that fails halfway leaves the database empty. Export → import → export
 /// yields the same bytes apart from `exportedAt`: rows are ordered by ID, keys are sorted, and
 /// creation and update timestamps are restored as stored.
-public struct GRDBBackup: Sendable {
+public struct GRDBBackup: BackupService {
     private let database: AppDatabase
     private let clock: StoreClock
 
@@ -54,19 +66,76 @@ public struct GRDBBackup: Sendable {
         do {
             try await database.writer.write { db in
                 guard try Self.isEmpty(db) else { throw BackupError.databaseNotEmpty }
-                // Parents before children. A location's `kitId` and a kit's location refer to each other;
-                // the schema checks the former at commit, so locations go in first.
-                for record in document.sites { try record.insert(db) }
-                for record in document.people { try record.insert(db) }
-                for record in document.products { try record.insert(db) }
-                for record in locations { try record.insert(db) }
-                for record in document.kits { try record.insert(db) }
-                for record in document.lots { try record.insert(db) }
-                for record in document.shelfLifeOverrides { try record.insert(db) }
+                try Self.insert(document, locations: locations, db: db)
             }
         } catch let error as DatabaseError {
             throw BackupError.invalidDocument(error.description)
         }
+    }
+
+    /// Erases every table and loads the document in one transaction. A file that can't be read, or whose rows
+    /// the schema refuses, throws before commit and leaves the existing data untouched.
+    /// - Throws: `BackupError.unsupportedFormatVersion` or `.invalidDocument`.
+    public func restore(_ data: Data) async throws {
+        let document = try Self.decode(data)
+        let locations = try Self.parentsFirst(document.locations)
+        do {
+            try await database.writer.write { db in
+                try Self.eraseAll(db)
+                try Self.insert(document, locations: locations, db: db)
+            }
+        } catch let error as DatabaseError {
+            throw BackupError.invalidDocument(error.description)
+        }
+    }
+
+    public func summary(of data: Data) async throws -> BackupSummary {
+        let document = try Self.decode(data)
+        _ = try Self.parentsFirst(document.locations)
+        return BackupSummary(
+            formatVersion: document.formatVersion, exportedAt: document.exportedAt,
+            siteNames: document.sites.map(\.name), people: document.people.count,
+            locations: document.locations.count, products: document.products.count,
+            lots: document.lots.filter { !$0.archived }.count, archivedLots: document.lots.filter(\.archived).count)
+    }
+
+    public func currentSummary() async throws -> BackupSummary {
+        try await database.writer.read { db in
+            BackupSummary(
+                formatVersion: BackupDocument.currentFormatVersion, exportedAt: nil,
+                siteNames: try GRDBSiteRepository.ordered(SiteRecord.all()).fetchAll(db).map(\.name),
+                people: try PersonRecord.fetchCount(db), locations: try LocationRecord.fetchCount(db),
+                products: try ProductRecord.fetchCount(db),
+                lots: try LotRecord.filter(Column("archived") == false).fetchCount(db),
+                archivedLots: try LotRecord.filter(Column("archived") == true).fetchCount(db))
+        }
+    }
+
+    /// Parents before children. A location's `kitId` and a kit's location refer to each other; the schema
+    /// checks the former at commit, so locations go in first.
+    private static func insert(_ document: BackupDocument, locations: [LocationRecord], db: Database) throws {
+        for record in document.sites { try record.insert(db) }
+        for record in document.people { try record.insert(db) }
+        for record in document.products { try record.insert(db) }
+        for record in locations { try record.insert(db) }
+        for record in document.kits { try record.insert(db) }
+        for record in document.lots { try record.insert(db) }
+        for record in document.shelfLifeOverrides { try record.insert(db) }
+    }
+
+    /// Children before parents. `ON DELETE RESTRICT` fires row by row, so the links between locations, and from
+    /// locations to kits, are cleared before those rows go.
+    private static func eraseAll(_ db: Database) throws {
+        try db.execute(sql: """
+            DELETE FROM shelf_life_override;
+            DELETE FROM lot;
+            UPDATE location SET parentId = NULL, kitId = NULL;
+            DELETE FROM kit;
+            DELETE FROM location;
+            DELETE FROM person;
+            DELETE FROM product;
+            DELETE FROM site;
+            """)
     }
 
     private static let tables = [
@@ -88,7 +157,7 @@ public struct GRDBBackup: Sendable {
         } catch {
             throw BackupError.invalidDocument("not a Hearthstock backup: \(describe(error))")
         }
-        guard header.formatVersion == BackupDocument.currentFormatVersion else {
+        guard BackupDocument.readableFormatVersions.contains(header.formatVersion) else {
             throw BackupError.unsupportedFormatVersion(header.formatVersion)
         }
         do {
