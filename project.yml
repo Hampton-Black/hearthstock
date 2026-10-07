@@ -13,6 +13,10 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - App
+      # The Slice 1 fixture, read in place so there's one copy. Only the DEBUG "Load sample pantry"
+      # button uses it; Release builds leave it out.
+      - path: Packages/HearthstockKit/Tests/HearthstockCoreTests/Fixtures/sample-pantry.json
+        buildPhase: resources
     dependencies:
       - package: HearthstockKit
         product: HearthstockCore
@@ -25,6 +29,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Hearthstock
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_VERSION: "6.0"
+        EXCLUDED_SOURCE_FILE_NAMES[config=Release]: sample-pantry.json
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
