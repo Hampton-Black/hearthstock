@@ -25,6 +25,7 @@ struct SettingsView: View {
     @State private var siteName = ""
     @State private var addingPerson = false
     @State private var addingLocation = false
+    @State private var backup = BackupController()
 
     var body: some View {
         NavigationStack {
@@ -47,6 +48,7 @@ struct SettingsView: View {
             }
         }
         .task { await model.subscribe(session.services, siteID: session.siteID) }
+        .backupPresentations(backup, siteName: model.inputs?.site.name ?? "Site")
         .onChange(of: model.inputs?.site.name, initial: true) { _, name in siteName = name ?? "" }
         .errorAlert($writeError)
         .sheet(isPresented: $addingPerson) {
@@ -113,7 +115,7 @@ struct SettingsView: View {
                 Text("A place inside another (a shelf in the garage) inherits its climate unless you set its own.")
             }
 
-            BackupSection()
+            BackupSection(controller: backup, siteName: inputs.site.name)
 
             #if DEBUG
             Section("Developer · Debug builds only") {
