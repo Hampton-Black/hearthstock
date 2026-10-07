@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edit person</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--red:#A3241B;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.group{background:var(--card);border-radius:14px;overflow:hidden}
+.cap{margin:0 16px 6px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.2px;font-weight:400}
+.foot{margin:6px 16px 0;font-size:13px;color:var(--ink2);line-height:1.35}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 16px;box-sizing:border-box;font-size:17px}
+.row+.row{border-top:0.5px solid var(--sep)}
+.step{width:48px;height:48px;border-radius:14px;border:none;background:var(--track);display:flex;align-items:center;justify-content:center;padding:0}
+.pre{min-height:36px;padding:0 12px;border-radius:18px;border:none;background:var(--track);font-size:15px;font-weight:600}
+.pre.on{background:var(--tint);color:#FFFDF9}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #2A241D">
+<div style="position: absolute; left: 0; right: 0; top: 54px; bottom: 0; background: var(--bg); border-radius: 12px 12px 0 0; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: center; padding-top: 6px"><span style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep)"></span></div>
+<header style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 8px 8px">
+<a href="Settings.dc.html" style="justify-self: start; min-height: 44px; display: flex; align-items: center; padding: 0 8px; font-size: 17px; color: var(--tint)">Cancel</a>
+<h1 style="margin: 0; font-size: 17px; font-weight: 600">Edit person</h1>
+<a href="Settings.dc.html" style="justify-self: end; min-height: 44px; display: flex; align-items: center; padding: 0 8px; font-size: 17px; font-weight: 600; color: var(--tint)">Done</a>
+</header>
+
+<div style="padding: 8px 16px 0; display: flex; flex-direction: column; gap: 22px">
+<div class="group">
+<label class="row"><span style="width: 70px">Name</span><input value="Hampton" aria-label="Name" style="flex: 1; border: none; background: transparent; font: inherit; color: var(--ink); outline: none"></label>
+</div>
+
+<section>
+<h2 class="cap">Food per day</h2>
+<div class="group">
+<div class="row" style="min-height: 72px">
+<button class="step" aria-label="Less" onClick="{{kcalDown}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span style="flex: 1; text-align: center"><span class="num" style="font-size: 30px; font-weight: 700">{{kcal}}</span><span style="font-size: 17px; color: var(--ink2)"> kcal</span></span>
+<button class="step" aria-label="More" onClick="{{kcalUp}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+</div>
+<div class="row" style="gap: 8px; flex-wrap: wrap">
+<sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+<button class="{{p.cls}}" onClick="{{p.pick}}">{{p.label}}</button>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section>
+<h2 class="cap">Water per day</h2>
+<div class="group">
+<div class="row" style="min-height: 72px">
+<button class="step" aria-label="Less" onClick="{{waterDown}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span style="flex: 1; text-align: center"><span class="num" style="font-size: 30px; font-weight: 700">{{water}}</span><span style="font-size: 17px; color: var(--ink2)"> gal</span></span>
+<button class="step" aria-label="More" onClick="{{waterUp}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+</div>
+</div>
+<p class="foot">1 gal a day covers drinking and basic washing. Plan more for hot weather.</p>
+</section>
+
+<div class="group">
+<a class="row" href="Settings.dc.html" style="justify-content: center; color: var(--red)">Remove from household</a>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { kcal: 2400, water: 1 }; }
+renderVals() {
+const k = this.state.kcal, w = this.state.water;
+const presets = [1800, 2000, 2400, 2800].map((v) => ({
+label: v.toLocaleString('en-US'),
+cls: v === k ? 'pre on' : 'pre',
+pick: () => this.setState({ kcal: v })
+}));
+return {
+kcal: k.toLocaleString('en-US'),
+water: String(w),
+presets,
+kcalUp: () => this.setState({ kcal: k + 100 }),
+kcalDown: () => this.setState({ kcal: Math.max(800, k - 100) }),
+waterUp: () => this.setState({ water: w + 0.25 }),
+waterDown: () => this.setState({ water: Math.max(0.25, w - 0.25) })
+};
+}
+}
+</script>
+</body>
+</html>

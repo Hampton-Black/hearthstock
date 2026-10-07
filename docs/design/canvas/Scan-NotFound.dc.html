@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan, barcode not found</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--amber:#8A5A00;--amberBg:#FBEACB;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.group{background:var(--card);border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 16px;box-sizing:border-box;font-size:17px}
+.row+.row{border-top:0.5px solid var(--sep)}
+.cap{margin:0 16px 6px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.2px;font-weight:400}
+.cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cat{min-height:56px;border:none;border-radius:14px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:13px;font-weight:600}
+.cat.on{background:var(--tint);color:#FFFDF9}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #1C1813">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; height: 260px; background: radial-gradient(100% 80% at 50% 50%, #3A3128 0%, #1C1813 75%)"></div>
+<div aria-hidden="true" style="position: absolute; left: 95px; top: 96px; width: 200px; height: 96px; border-radius: 16px; box-shadow: inset 0 0 0 3px #86BBA6"></div>
+<div style="position: absolute; left: 0; right: 0; top: 206px; text-align: center; font-size: 15px; color: #CFC3B2" class="num">{{barcode}}</div>
+
+<div style="position: absolute; left: 0; right: 0; top: 244px; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; padding: 20px 16px 38px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box">
+<div style="display: flex; gap: 12px; align-items: flex-start">
+<span style="{{iconStyle}}"><sc-if value="{{offline}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0"></path><circle cx="12" cy="19" r="1"></circle><path d="M3 3l18 18"></path></svg></sc-if><sc-if value="{{notFound}}" hint-placeholder-val="{{ true }}"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2M9 9.5a2 2 0 1 1 2.5 2c-.4.2-.5.5-.5 1"></path></svg></sc-if></span>
+<div>
+<h1 style="margin: 0; font-size: 22px; font-weight: 700">{{title}}</h1>
+<p style="margin: 4px 0 0; font-size: 15px; color: var(--ink2); line-height: 1.35">{{body}}</p>
+</div>
+</div>
+
+<div class="group">
+<label class="row"><span style="width: 60px">Name</span><input value="Canned chicken, 12.5 oz" aria-label="Item name" style="flex: 1; min-width: 0; border: none; background: transparent; font: inherit; color: var(--ink); outline: none"></label>
+</div>
+
+<section>
+<h2 class="cap">Category</h2>
+<div class="cats" role="radiogroup" aria-label="Category">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="4">
+<button class="{{c.cls}}" role="radio" aria-checked="{{c.on}}" onClick="{{c.pick}}">{{c.name}}</button>
+</sc-for>
+</div>
+</section>
+
+<sc-if value="{{isFood}}" hint-placeholder-val="{{ true }}">
+<div class="group">
+<label class="row"><span style="flex: 1">Calories per can</span><input value="350" inputmode="numeric" aria-label="Calories per can" class="num" style="width: 80px; text-align: right; border: none; background: var(--track); border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 600; color: var(--ink); outline: none"></label>
+</div>
+<p style="margin: -10px 16px 0; font-size: 13px; color: var(--ink2)">From the nutrition label. Food without calories can't count toward runway.</p>
+</sc-if>
+
+<div style="flex: 1"></div>
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px">
+<a href="Add-Scan.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--track); font-size: 17px; font-weight: 600">Rescan</a>
+<a href="Add-Form.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--tint); color: #FFFDF9; font-size: 17px; font-weight: 600">Next: amount &amp; date</a>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"case":{"editor":"enum","options":["Not found","Offline"],"default":"Not found"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { cat: 'Food' }; }
+renderVals() {
+const off = (this.props.case ?? 'Not found') === 'Offline';
+const cats = ['Food', 'Water', 'Medical', 'Gear'].map((n) => ({
+name: n, on: this.state.cat === n,
+cls: this.state.cat === n ? 'cat on' : 'cat',
+pick: () => this.setState({ cat: n })
+}));
+return {
+offline: off, notFound: !off,
+barcode: off ? 'Barcode saved · will look up later' : 'No match for this barcode',
+title: off ? 'You’re offline' : 'We don’t know this one yet',
+body: off ? 'The barcode is saved. Add the basics now and Hearthstock fills in the rest when you’re back online.' : 'Name it once and every future scan of this barcode fills in automatically.',
+iconStyle: 'width: 44px; height: 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex: none; ' + (off ? 'background: #E9E2D6; color: #5F554B' : 'background: #E2ECE6; color: #2F5D50'),
+cats, isFood: this.state.cat === 'Food'
+};
+}
+}
+</script>
+</body>
+</html>

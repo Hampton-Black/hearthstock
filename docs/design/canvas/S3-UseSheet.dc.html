@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Use or adjust a lot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--amber:#8A5A00;--amberBg:#FBEACB;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.step{width:56px;height:56px;border-radius:16px;border:none;background:var(--track);display:flex;align-items:center;justify-content:center;padding:0}
+.units{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--track);border-radius:10px;padding:2px}
+.units button{border:none;background:transparent;min-height:40px;border-radius:8px;font-size:17px;font-weight:500}
+.units button.on{background:var(--card);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #5A5248">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 54px; height: 300px; border-radius: 12px 12px 0 0; background: #C9C1B5"></div>
+<div style="position: absolute; left: 0; right: 0; top: 330px; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; display: flex; flex-direction: column; padding: 0 16px 38px; box-sizing: border-box">
+<div style="display: flex; justify-content: center; padding-top: 6px"><span style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep)"></span></div>
+<header style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 0 8px">
+<a href="S3-Inventory.dc.html" style="justify-self: start; min-height: 44px; display: flex; align-items: center; font-size: 17px; color: var(--tint)">Cancel</a>
+<h1 style="margin: 0; font-size: 17px; font-weight: 600">{{title}}</h1>
+<span></span>
+</header>
+<div style="text-align: center; font-size: 15px; color: var(--ink2)">White rice · Garage shelf · <span class="num" style="font-weight: 600; color: var(--ink)">20 lb</span> on hand</div>
+<div style="font-size: 15px; font-weight: 600; text-align: center; margin-top: 14px">{{prompt}}</div>
+
+<div style="display: flex; align-items: center; gap: 12px; margin-top: 10px">
+<button class="step" aria-label="Less" onClick="{{dec}}"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span style="flex: 1; text-align: center"><span class="num" style="font-size: 48px; font-weight: 700">{{amount}}</span> <span style="font-size: 22px; color: var(--ink2)">{{unit}}</span></span>
+<button class="step" aria-label="More" onClick="{{inc}}"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+</div>
+
+<div class="units" role="group" aria-label="Unit" style="margin-top: 14px">
+<sc-for list="{{units}}" as="u" hint-placeholder-count="4">
+<button class="{{u.cls}}" onClick="{{u.pick}}">{{u.name}}</button>
+</sc-for>
+</div>
+
+<div style="min-height: 64px; margin-top: 12px">
+<sc-if value="{{over}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--amberBg); color: var(--amber); font-size: 15px; line-height: 1.35">Only 20 lb available. Saving uses all of it and moves the lot to the archive.</p>
+</sc-if>
+<sc-if value="{{notOver}}" hint-placeholder-val="{{ true }}">
+<p class="num" style="margin: 0; text-align: center; font-size: 15px; color: var(--ink2)">{{after}}</p>
+</sc-if>
+</div>
+
+<div style="flex: 1"></div>
+<a href="S3-Inventory.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--tint); color: #FFFDF9; font-size: 17px; font-weight: 600">{{cta}}</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mode":{"editor":"enum","options":["Use","Adjust"],"default":"Use"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { use: 2, left: 18, unit: 'lb' }; }
+renderVals() {
+const adjust = (this.props.mode ?? 'Use') === 'Adjust';
+const s = this.state;
+const toLb = { lb: 1, oz: 1 / 16, kg: 2.2046, g: 0.0022046 };
+const step = { lb: 1, oz: 4, kg: 0.5, g: 100 };
+const key = adjust ? 'left' : 'use';
+const v = s[key];
+const lb = v * toLb[s.unit];
+const r1 = (x) => Math.round(x * 10) / 10;
+const over = !adjust && lb > 20 + 1e-6;
+const units = ['lb', 'oz', 'kg', 'g'].map((n) => ({
+name: n, cls: n === s.unit ? 'on' : '',
+pick: () => this.setState({ unit: n, use: n === 'lb' ? 2 : n === 'oz' ? 32 : n === 'kg' ? 1 : 900, left: n === 'lb' ? 18 : n === 'oz' ? 288 : n === 'kg' ? 8 : 8200 })
+}));
+return {
+title: adjust ? 'Adjust amount' : 'Use some',
+prompt: adjust ? 'How much is left?' : 'How much did you use?',
+amount: String(v), unit: s.unit, units,
+inc: () => this.setState({ [key]: r1(v + step[s.unit]) }),
+dec: () => this.setState({ [key]: Math.max(0, r1(v - step[s.unit])) }),
+over, notOver: !over,
+after: adjust ? 'Sets the lot to ' + r1(lb) + ' lb. For corrections, not meals.' : r1(20 - lb) + ' lb left after this',
+cta: adjust ? 'Save ' + v + ' ' + s.unit : (over ? 'Use all 20 lb' : 'Use ' + v + ' ' + s.unit)
+};
+}
+}
+</script>
+</body>
+</html>

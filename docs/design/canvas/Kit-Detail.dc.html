@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kit detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--good:#2E6B4F;--goodBg:#E1EEE5;--amber:#8A5A00;--amberBg:#FBEACB;--red:#A3241B;--redBg:#F7DFDB;--track:#E9E2D6;--bar:rgba(255,253,249,.92);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.hs.dark{--bg:#17140F;--card:#25211B;--ink:#F3ECE2;--ink2:#BCB09F;--ink3:#A39784;--sep:#3A342C;--tint:#86BBA6;--tintSoft:#24352E;--good:#8CC7A5;--goodBg:#203328;--amber:#F0BC5E;--amberBg:#3A2E17;--red:#F2918A;--redBg:#41201C;--track:#332E27;--bar:rgba(30,27,22,.94)}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.group{background:var(--card);border-radius:16px;overflow:hidden}
+.cap{margin:0 16px 6px;font-size:15px;font-weight:600;color:var(--ink2)}
+.row{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;box-sizing:border-box}
+.row+.row{border-top:0.5px solid var(--sep)}
+.mark{width:28px;height:28px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex:none}
+.m-complete{background:var(--goodBg);color:var(--good)}
+.m-expiring{background:var(--amberBg);color:var(--amber)}
+.m-short{color:var(--amber);box-shadow:inset 0 0 0 2px var(--amber)}
+.m-missing{color:var(--ink3);box-shadow:inset 0 0 0 2px var(--ink3)}
+.lbl{font-size:13px;font-weight:600;white-space:nowrap}
+.l-complete{color:var(--good)}
+.l-expiring,.l-short{color:var(--amber)}
+.l-missing{color:var(--ink2)}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:var(--track);border-radius:9px;padding:2px}
+.seg button{border:none;background:transparent;min-height:34px;border-radius:7px;font-size:15px;font-weight:500}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:83px;background:var(--bar);border-top:0.5px solid var(--sep);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding-top:7px;box-sizing:border-box}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--ink3)}
+.tab.on{color:var(--tint)}
+</style>
+</helmet>
+<div class="{{rootClass}}" style="width: 390px; height: 1100px; position: relative; overflow: hidden">
+<div style="padding: 50px 16px 100px; display: flex; flex-direction: column; gap: 16px">
+<nav style="display: flex; align-items: center; justify-content: space-between; height: 44px">
+<a href="Kits.dc.html" style="display: flex; align-items: center; gap: 2px; min-height: 44px; color: var(--tint); font-size: 17px; margin-left: -6px"><svg class="ic" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" style="stroke-width: 2.2"><path d="M15 5l-7 7 7 7"></path></svg>Kits</a>
+<a href="Kit-Template.dc.html" style="min-height: 44px; display: flex; align-items: center; color: var(--tint); font-size: 17px">Edit</a>
+</nav>
+<header>
+<div style="font-size: 15px; color: var(--ink2)">Hall closet · 72-hour template</div>
+<h1 style="margin: 2px 0 0; font-size: 28px; font-weight: 700">Go-bag (Hampton)</h1>
+</header>
+<div class="group" style="padding: 16px; display: flex; align-items: center; gap: 16px">
+<span class="num" style="font-size: 44px; font-weight: 700; line-height: 1">11<span style="font-size: 20px; color: var(--ink2)"> of 14</span></span>
+<span style="flex: 1; font-size: 15px; color: var(--ink2)">1 to use soon, 2 short, 1 missing. Last checked Aug 30.</span>
+</div>
+<div class="seg" role="group" aria-label="Show">
+<button class="{{allCls}}" onClick="{{showAll}}">All 14</button>
+<button class="{{needCls}}" onClick="{{showNeed}}">Needs attention · 4</button>
+</div>
+
+<section>
+<h2 class="cap">Needs attention</h2>
+<div class="group">
+<sc-for list="{{need}}" as="r" hint-placeholder-count="4">
+<div class="row">
+<span class="{{r.mcls}}"><sc-if value="{{r.isExp}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l2.5 1.5"></path></svg></sc-if><sc-if value="{{r.isShort}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 12h10"></path></svg></sc-if><sc-if value="{{r.isMissing}}" hint-placeholder-val="{{ false }}"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 7v10M7 12h10"></path></svg></sc-if></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 17px; font-weight: 600">{{r.name}}</span><span style="display: block; font-size: 15px; color: var(--ink2)">{{r.detail}}</span></span>
+<span class="{{r.lcls}}">{{r.label}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+<sc-if value="{{showPacked}}" hint-placeholder-val="{{ true }}">
+<section>
+<h2 class="cap">Packed</h2>
+<div class="group">
+<sc-for list="{{packed}}" as="r" hint-placeholder-count="10">
+<div class="row" style="min-height: 52px">
+<span class="mark m-complete"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="stroke-width: 2.4"><path d="M6 12.5l4 4 8-9"></path></svg></span>
+<span style="flex: 1; font-size: 17px">{{r.name}}</span>
+<span style="font-size: 15px; color: var(--ink2)">{{r.detail}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+</div>
+
+<nav class="tabbar" aria-label="Tabs">
+<a class="tab" href="Main.dc.html"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M3.5 16a8.5 8.5 0 0 1 17 0"></path><path d="M12 16l4.5-5"></path><path d="M3 20h18"></path></svg><span>Runway</span></a>
+<a class="tab" href="Inventory.dc.html"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"></path><path d="M3 7.5l9 4.5 9-4.5M12 12v9"></path></svg><span>Inventory</span></a>
+<a class="tab on" href="Kits.dc.html"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="5" y="7" width="14" height="14" rx="3.5"></rect><path d="M9 7V5.5a3 3 0 0 1 6 0V7M9 13h6"></path></svg><span>Kits</span></a>
+<a class="tab" href="Settings.dc.html"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"></path></svg><span>Settings</span></a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":1100}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { only: false }; }
+renderVals() {
+const mk = (name, detail, st, label) => ({
+name, detail, label,
+mcls: 'mark m-' + st, lcls: 'lbl l-' + st,
+isExp: st === 'expiring', isShort: st === 'short', isMissing: st === 'missing'
+});
+const need = [
+mk('Water, 3 L', '3 × 1 L bottles · exp Oct 27', 'expiring', 'Use soon'),
+mk('Food, 3 days', '1 of 3 meals (MRE)', 'short', 'Short'),
+mk('N95 masks', '1 of 2', 'short', 'Short'),
+mk('Document copies', 'IDs, insurance, contacts', 'missing', 'Missing')
+];
+const packed = [
+['Water filter', '1'], ['Headlamp', '1'], ['AAA batteries', '8'], ['First-aid pouch', '1'],
+['Emergency blankets', '2'], ['Rain shell', '1'], ['Fire starter', '1'], ['Multi-tool', '1'],
+['Battery bank', 'Charged Aug 30'], ['Socks', '2 pair']
+].map(([name, detail]) => ({ name, detail }));
+return {
+rootClass: (this.props.dark ?? false) ? 'hs dark' : 'hs',
+need, packed,
+showPacked: !this.state.only,
+allCls: this.state.only ? '' : 'on',
+needCls: this.state.only ? 'on' : '',
+showAll: () => this.setState({ only: false }),
+showNeed: () => this.setState({ only: true })
+};
+}
+}
+</script>
+</body>
+</html>

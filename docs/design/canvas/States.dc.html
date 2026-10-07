@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Item states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--good:#2E6B4F;--goodBg:#E1EEE5;--amber:#8A5A00;--amberBg:#FBEACB;--red:#A3241B;--redBg:#F7DFDB;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.ic{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+.b-good{color:var(--good);background:var(--goodBg)}
+.b-soon{color:var(--ink);background:var(--track)}
+.b-caution{color:var(--amber);background:var(--amberBg)}
+.b-inspect{color:var(--amber);box-shadow:inset 0 0 0 1.5px var(--amber)}
+.b-expired{color:var(--red);background:var(--redBg)}
+.st{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:14px 16px;align-items:start}
+.st+.st{border-top:0.5px solid var(--sep)}
+.st p{margin:0;font-size:15px;line-height:1.35}
+.st small{display:block;font-size:13px;color:var(--ink2);margin-top:3px}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; box-sizing: border-box; padding: 28px 16px; display: flex; flex-direction: column; gap: 18px">
+<div>
+<h1 style="margin: 0; font-size: 28px; font-weight: 700">Item states</h1>
+<p style="margin: 4px 0 0; font-size: 15px; color: var(--ink2)">Every lot is in exactly one state. Badges always pair a word and an icon with the color.</p>
+</div>
+
+<div>
+<div style="display: grid; grid-template-columns: 3fr 1fr 2fr 1fr 1fr; gap: 3px; height: 14px">
+<span style="border-radius: 4px 0 0 4px; background: var(--good)"></span>
+<span style="background: #C9B98F"></span>
+<span style="background: #D9A441"></span>
+<span style="background: transparent; box-shadow: inset 0 0 0 2px #D9A441"></span>
+<span style="border-radius: 0 4px 4px 0; background: var(--red)"></span>
+</div>
+<div style="display: grid; grid-template-columns: 3fr 1fr 2fr 1fr 1fr; gap: 3px; margin-top: 6px; font-size: 12px; color: var(--ink2)">
+<span>Good</span><span>Soon</span><span>Caution</span><span>Insp.</span><span>Exp.</span>
+</div>
+<div style="position: relative; height: 18px; font-size: 12px; font-weight: 600">
+<span style="position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap">▲ printed date</span>
+</div>
+</div>
+
+<div style="background: var(--card); border-radius: 16px; overflow: hidden">
+<div class="st"><span><span class="badge b-good">Good</span></span><p>Before the printed date, outside the notice window.<small>Counts toward both ends of the range.</small></p></div>
+<div class="st"><span><span class="badge b-soon"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="color: var(--amber)"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Use soon</span></span><p>Within 30 days of the printed date. A nudge, not a warning.<small>Counts toward both ends. Notice window set per household.</small></p></div>
+<div class="st"><span><span class="badge b-caution"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"></path></svg>Caution</span></span><p>Past best-by, inside the extension window. Eat or rotate first.<small>Counts toward the high end only.</small></p></div>
+<div class="st"><span><span class="badge b-inspect"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M20 20l-4.2-4.2"></path></svg>Inspect</span></span><p>Final 20% of the extension window. Check for bulging, rust or leaks.<small>Counts toward the high end only.</small></p></div>
+<div class="st"><span><span class="badge b-expired"><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"></path></svg>Expired</span></span><p>Past the extension window, or past any use-by date.<small>Not counted. Red is used only here and for a shortfall below 3 days.</small></p></div>
+</div>
+
+<p style="margin: 0; font-size: 13px; color: var(--ink2); line-height: 1.4">Use-by items skip Caution and Inspect: Good → Use soon → Expired. Kits use their own words: Complete, Use soon, Short, Missing.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

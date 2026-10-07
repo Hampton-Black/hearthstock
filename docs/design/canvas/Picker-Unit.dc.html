@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unit picker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cap{margin:0 4px 8px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.2px;font-weight:400}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.u{min-height:44px;min-width:56px;padding:0 14px;border:none;border-radius:12px;background:var(--card);font-size:17px;font-weight:500}
+.u.on{background:var(--tint);color:#FFFDF9;font-weight:600}
+.step{width:44px;height:44px;border-radius:12px;border:none;background:var(--track);display:flex;align-items:center;justify-content:center;padding:0}
+.sw{width:51px;height:31px;border-radius:16px;border:none;padding:2px;display:flex;flex:none}
+.sw span{width:27px;height:27px;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #5A5248">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 54px; height: 200px; border-radius: 12px 12px 0 0; background: #C9C1B5"></div>
+<div style="position: absolute; left: 0; right: 0; top: 150px; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: center; padding-top: 6px"><span style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep)"></span></div>
+<header style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 8px 4px">
+<span></span>
+<h1 style="margin: 0; font-size: 17px; font-weight: 600">Unit</h1>
+<a href="Add-Form.dc.html" style="justify-self: end; min-height: 44px; display: flex; align-items: center; padding: 0 8px; font-size: 17px; font-weight: 600; color: var(--tint)">Done</a>
+</header>
+
+<div style="padding: 8px 16px 0; display: flex; flex-direction: column; gap: 18px">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<section>
+<h2 class="cap">{{g.title}}</h2>
+<div class="chips">
+<sc-for list="{{g.units}}" as="u" hint-placeholder-count="4">
+<button class="{{u.cls}}" onClick="{{u.pick}}" aria-pressed="{{u.on}}">{{u.name}}</button>
+</sc-for>
+</div>
+</section>
+</sc-for>
+
+<section style="background: var(--card); border-radius: 16px; padding: 4px 16px">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 52px">
+<span style="flex: 1"><span style="display: block; font-size: 17px">Multipack</span><span style="display: block; font-size: 13px; color: var(--ink2)">Like a case of 24 bottles</span></span>
+<button class="sw" role="switch" aria-checked="{{packOn}}" aria-label="Multipack" onClick="{{togglePack}}" style="{{swStyle}}"><span></span></button>
+</div>
+<sc-if value="{{pack}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 0 12px; border-top: 0.5px solid var(--sep)">
+<button class="step" aria-label="Fewer in pack" onClick="{{dec}}"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span class="num" style="font-size: 24px; font-weight: 700; min-width: 34px; text-align: center">{{n}}</span>
+<button class="step" aria-label="More in pack" onClick="{{inc}}"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+<span style="font-size: 20px; color: var(--ink2)">×</span>
+<span class="num" style="font-size: 20px; font-weight: 600; background: var(--track); padding: 8px 12px; border-radius: 10px">{{size}}</span>
+</div>
+<p class="num" style="margin: 0 0 12px; font-size: 15px; color: var(--ink2)">{{total}}</p>
+</sc-if>
+</section>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { unit: 'L', pack: true, n: 24 }; }
+renderVals() {
+const s = this.state;
+const mk = (title, names) => ({
+title,
+units: names.map((name) => ({
+name, on: s.unit === name ? 'true' : 'false',
+cls: s.unit === name ? 'u on' : 'u',
+pick: () => this.setState({ unit: name })
+}))
+});
+const groups = [
+mk('Count', ['can', 'jar', 'bottle', 'bag', 'bucket', 'box', 'meal', 'each']),
+mk('Weight', ['lb', 'oz', 'kg', 'g']),
+mk('Volume', ['gal', 'L', 'mL', 'fl oz'])
+];
+const per = s.unit === 'L' ? 0.5 : 1;
+const tot = Math.round(s.n * per * 10) / 10;
+const galNote = s.unit === 'L' ? ' (' + (Math.round(tot / 3.785 * 10) / 10) + ' gal)' : '';
+return {
+groups,
+pack: s.pack, packOn: s.pack ? 'true' : 'false',
+swStyle: s.pack ? 'background: #2F5D50; justify-content: flex-end' : 'background: #E9E2D6; justify-content: flex-start',
+togglePack: () => this.setState({ pack: !s.pack }),
+n: s.n, size: per + ' ' + s.unit,
+total: 'Each pack is ' + tot + ' ' + s.unit + galNote,
+inc: () => this.setState({ n: s.n + 1 }),
+dec: () => this.setState({ n: Math.max(2, s.n - 1) })
+};
+}
+}
+</script>
+</body>
+</html>

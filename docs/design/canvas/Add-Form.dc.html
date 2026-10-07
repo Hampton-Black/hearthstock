@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add item, details</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--amber:#8A5A00;--amberBg:#FBEACB;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.hs{--onTint:#FFFDF9;--red:#A3241B}
+.hs.dark{--bg:#17140F;--card:#25211B;--ink:#F3ECE2;--ink2:#BCB09F;--ink3:#A39784;--sep:#3A342C;--tint:#86BBA6;--tintSoft:#24352E;--good:#8CC7A5;--goodBg:#203328;--amber:#F0BC5E;--amberBg:#3A2E17;--red:#F2918A;--redBg:#41201C;--track:#332E27;--bar:rgba(30,27,22,.94);--onTint:#17140F}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.group{background:var(--card);border-radius:14px;overflow:hidden}
+.cap{margin:0 16px 6px;font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.2px;font-weight:400}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 16px;box-sizing:border-box;font-size:17px}
+.row+.row{border-top:0.5px solid var(--sep)}
+.val{color:var(--ink2);display:flex;align-items:center;gap:4px}
+.step{width:48px;height:48px;border-radius:14px;border:none;background:var(--track);display:flex;align-items:center;justify-content:center;padding:0}
+.seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--track);border-radius:9px;padding:2px;flex:1}
+.seg button{border:none;background:transparent;min-height:34px;border-radius:7px;font-size:15px;font-weight:500}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+</style>
+</helmet>
+<div class="{{rootClass}}" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #2A241D">
+<div style="position: absolute; left: 0; right: 0; top: 54px; bottom: 0; background: var(--bg); border-radius: 12px 12px 0 0; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: center; padding-top: 6px"><span style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep)"></span></div>
+<header style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 8px 8px">
+<a href="Add-Scan.dc.html" style="justify-self: start; min-height: 44px; display: flex; align-items: center; padding: 0 8px; font-size: 17px; color: var(--tint)">Cancel</a>
+<h1 style="margin: 0; font-size: 17px; font-weight: 600">New item</h1>
+<span></span>
+</header>
+
+<div style="flex: 1; overflow: hidden; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 20px">
+<section>
+<h2 class="cap">Product</h2>
+<div class="group">
+<div class="row" style="min-height: 68px">
+<span style="width: 40px; height: 40px; border-radius: 10px; background: var(--tintSoft); color: var(--tint); display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 8V5h3M17 5h3v3M20 16v3h-3M7 19H4v-3M8 9v6M11 9v6M14 9v6M16.5 9v6"></path></svg></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-weight: 600">Black beans, 15 oz can</span><span style="display: block; font-size: 15px; color: var(--ink2)">Barcode match · Food · 385 kcal</span></span>
+<a href="#" style="font-size: 15px; color: var(--tint); min-height: 44px; display: flex; align-items: center">Edit</a>
+</div>
+</div>
+</section>
+
+<section>
+<h2 class="cap">Quantity</h2>
+<div class="group">
+<div class="row" style="min-height: 68px">
+<button class="step" aria-label="Fewer" onClick="{{dec}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span class="num" style="flex: 1; text-align: center; font-size: 34px; font-weight: 700">{{qty}}</span>
+<button class="step" aria-label="More" onClick="{{inc}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+<a href="Picker-Unit.dc.html" style="min-height: 48px; padding: 0 12px; border-radius: 14px; background: var(--track); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 4px">cans<svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 10l4-4 4 4M8 14l4 4 4-4"></path></svg></a>
+</div>
+</div>
+</section>
+
+<section>
+<h2 class="cap">Printed date</h2>
+<div class="group">
+<div class="row">
+<div class="seg" role="group" aria-label="Date type">
+<button class="{{bestCls}}" onClick="{{setBest}}">Best by</button>
+<button class="{{useCls}}" onClick="{{setUse}}">Use by</button>
+<button class="{{noneCls}}" onClick="{{setNone}}">No date</button>
+</div>
+</div>
+<sc-if value="{{hasDate}}" hint-placeholder-val="{{ true }}">
+<div class="row"><span style="flex: 1">Date</span><a href="Picker-Date.dc.html" class="val num" style="color: var(--ink); font-weight: 600; background: var(--track); padding: 6px 12px; border-radius: 8px">Mar 2026</a></div>
+</sc-if>
+</div>
+<sc-if value="{{showPast}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 8px 16px 0; font-size: 15px; color: var(--amber); display: flex; gap: 6px; align-items: flex-start"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg><span>Past best-by. Saved as Caution: eat or rotate first.</span></p>
+</sc-if>
+<sc-if value="{{showExpired}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 8px 16px 0; font-size: 15px; color: var(--red); display: flex; gap: 6px; align-items: flex-start"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="margin-top: 1px"><circle cx="12" cy="12" r="8.5"></circle><path d="M9 9l6 6M15 9l-6 6"></path></svg><span>Past use-by. Saved as Expired and left out of your runway.</span></p>
+</sc-if>
+</section>
+
+<section>
+<div class="group">
+<div class="row"><span style="flex: 1">Acquired</span><span class="val">Today<svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+<div class="row"><span style="flex: 1">Location</span><span class="val">Pantry<svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 10l4-4 4 4M8 14l4 4 4-4"></path></svg></span></div>
+</div>
+</section>
+</div>
+
+<div style="padding: 12px 16px 38px"><a href="Inventory.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--tint); color: var(--onTint); font-size: 17px; font-weight: 600">Add&nbsp; {{qty}}&nbsp; cans</a>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { qty: 6, mode: 'best' }; }
+renderVals() {
+const m = this.state.mode;
+return {
+rootClass: (this.props.dark ?? false) ? 'hs dark' : 'hs',
+qty: this.state.qty,
+inc: () => this.setState({ qty: this.state.qty + 1 }),
+dec: () => this.setState({ qty: Math.max(1, this.state.qty - 1) }),
+bestCls: m === 'best' ? 'on' : '', useCls: m === 'use' ? 'on' : '', noneCls: m === 'none' ? 'on' : '',
+setBest: () => this.setState({ mode: 'best' }),
+setUse: () => this.setState({ mode: 'use' }),
+setNone: () => this.setState({ mode: 'none' }),
+hasDate: m !== 'none',
+showPast: m === 'best',
+showExpired: m === 'use'
+};
+}
+}
+</script>
+</body>
+</html>

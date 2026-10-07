@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First run, household</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.group{background:var(--card);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 16px;box-sizing:border-box;font-size:17px}
+.row+.row{border-top:0.5px solid var(--sep)}
+.av{width:36px;height:36px;border-radius:18px;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.chips{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.chip{min-height:64px;border:none;border-radius:16px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.chip.on{background:var(--tint);color:#FFFDF9}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column">
+<div style="padding: 58px 20px 0; flex: 1; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; gap: 6px" aria-label="Step 1 of 2">
+<span style="flex: 1; height: 4px; border-radius: 2px; background: var(--tint)"></span>
+<span style="flex: 1; height: 4px; border-radius: 2px; background: var(--track)"></span>
+</div>
+<header>
+<h1 style="margin: 0; font-size: 30px; font-weight: 700; line-height: 1.15">Who are you preparing for?</h1>
+<p style="margin: 8px 0 0; font-size: 17px; color: var(--ink2); line-height: 1.35">Each person's daily food and water sets how far your supplies go.</p>
+</header>
+
+<div class="group">
+<a class="row" href="Edit-Member.dc.html"><span class="av" style="background: #8C6A4A">H</span><span style="flex: 1; min-width: 0"><span style="display: block; font-weight: 600">Hampton</span><span class="num" style="display: block; font-size: 15px; color: var(--ink2)">2,400 kcal · 1 gal a day</span></span><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="color: var(--ink3)"><path d="M9 6l6 6-6 6"></path></svg></a>
+<a class="row" href="Edit-Member.dc.html"><span class="av" style="background: #5E7A6E">P</span><span style="flex: 1; min-width: 0"><span style="display: block; font-weight: 600">Partner</span><span class="num" style="display: block; font-size: 15px; color: var(--ink2)">2,000 kcal · 1 gal a day</span></span><svg class="ic" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="color: var(--ink3)"><path d="M9 6l6 6-6 6"></path></svg></a>
+<a class="row" href="Edit-Member.dc.html" style="color: var(--tint)"><span class="av" style="background: var(--tintSoft); color: var(--tint)"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span>Add a person</a>
+</div>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-size: 20px; font-weight: 700">How many days do you want to be ready for?</h2>
+<p style="margin: 0; font-size: 15px; color: var(--ink2); line-height: 1.35">If a storm, power outage or emergency kept you home with no store runs and no safe tap water, how long should your supplies carry you?</p>
+<div class="chips" role="group" aria-label="Runway target">
+<sc-for list="{{targets}}" as="t" hint-placeholder-count="4">
+<button class="{{t.cls}}" onClick="{{t.pick}}"><span class="num" style="font-size: 26px; font-weight: 700">{{t.days}}</span><span style="font-size: 13px; font-weight: 600">days</span></button>
+</sc-for>
+</div>
+<div style="display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--tintSoft)">
+<svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" style="color: var(--tint); margin-top: 1px"><path d="M4 11l8-6.5 8 6.5V20H4z"></path><path d="M10 20v-5h4v5"></path></svg>
+<span style="font-size: 15px; line-height: 1.35"><strong>{{blurbTitle}}</strong> {{blurb}}</span>
+</div>
+<p style="margin: 0; font-size: 13px; color: var(--ink2)">Start where you are. You can raise this any time in Settings.</p>
+</section>
+</div>
+
+<div style="padding: 12px 20px 40px">
+<a href="Dash-Empty.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--tint); color: #FFFDF9; font-size: 17px; font-weight: 600">Continue</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { target: 14 }; }
+renderVals() {
+const targets = [3, 7, 14, 30].map((d) => ({
+days: d,
+cls: d === this.state.target ? 'chip on' : 'chip',
+pick: () => this.setState({ target: d })
+}));
+const blurbs = {
+3: ['A short disruption.', 'The minimum most emergency guides recommend: a storm or a weekend without power.'],
+7: ['A rough week.', 'Roads closed by weather or a longer outage, without needing to leave home.'],
+14: ['Two weeks at home.', 'A common goal for sheltering in place through a major storm or regional outage.'],
+30: ['A month of breathing room.', 'Rides out a long disruption to power, water or supply chains.']
+};
+const b = blurbs[this.state.target];
+return { targets, blurbTitle: b[0], blurb: b[1] };
+}
+}
+</script>
+</body>
+</html>

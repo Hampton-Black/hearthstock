@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan, item already in inventory</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--good:#2E6B4F;--goodBg:#E1EEE5;--amber:#8A5A00;--amberBg:#FBEACB;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.group{background:var(--card);border-radius:16px;overflow:hidden}
+.opt{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:10px 16px;box-sizing:border-box;border:none;background:transparent;text-align:left}
+.opt+.opt{border-top:0.5px solid var(--sep)}
+.radio{width:24px;height:24px;border-radius:12px;box-shadow:inset 0 0 0 2px var(--ink3);flex:none;display:flex;align-items:center;justify-content:center}
+.radio.on{box-shadow:inset 0 0 0 7px var(--tint)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.step{width:48px;height:48px;border-radius:14px;border:none;background:var(--track);display:flex;align-items:center;justify-content:center;padding:0}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #1C1813">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; height: 220px; background: radial-gradient(100% 80% at 50% 50%, #3A3128 0%, #1C1813 75%)"></div>
+<div aria-hidden="true" style="position: absolute; left: 95px; top: 80px; width: 200px; height: 90px; border-radius: 16px; box-shadow: inset 0 0 0 3px #86BBA6"></div>
+
+<div style="position: absolute; left: 0; right: 0; top: 200px; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; padding: 20px 16px 38px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box">
+<div>
+<div style="font-size: 13px; font-weight: 600; color: var(--ink2); text-transform: uppercase; letter-spacing: .3px">Already in your inventory</div>
+<h1 style="margin: 2px 0 0; font-size: 24px; font-weight: 700">Black beans, 15 oz</h1>
+<p style="margin: 6px 0 0; font-size: 15px; color: var(--ink2); line-height: 1.35">Does this can have the same printed date as one you already have?</p>
+</div>
+
+<div class="group" role="radiogroup" aria-label="Which lot">
+<button class="opt" role="radio" aria-checked="{{onA}}" onClick="{{pickA}}">
+<span class="{{radA}}"></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 17px; font-weight: 600">Pantry · 6 cans</span><span style="display: block; font-size: 15px; color: var(--ink2)">Best by Mar 2026</span></span>
+<span class="badge" style="color: var(--amber); background: var(--amberBg)">Caution</span>
+</button>
+<button class="opt" role="radio" aria-checked="{{onB}}" onClick="{{pickB}}">
+<span class="{{radB}}"></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 17px; font-weight: 600">Garage shelf · 12 cans</span><span style="display: block; font-size: 15px; color: var(--ink2)">Best by Aug 2028</span></span>
+<span class="badge" style="color: var(--good); background: var(--goodBg)">Good</span>
+</button>
+<button class="opt" role="radio" aria-checked="{{onNew}}" onClick="{{pickNew}}">
+<span class="{{radNew}}"></span>
+<span style="flex: 1; min-width: 0"><span style="display: block; font-size: 17px; font-weight: 600">Different date</span><span style="display: block; font-size: 15px; color: var(--ink2)">Start a new lot</span></span>
+</button>
+</div>
+
+<div class="group" style="display: flex; align-items: center; gap: 12px; padding: 10px 16px">
+<span style="flex: 1; font-size: 17px">Adding</span>
+<button class="step" aria-label="Fewer" onClick="{{dec}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span class="num" style="min-width: 36px; text-align: center; font-size: 26px; font-weight: 700">{{qty}}</span>
+<button class="step" aria-label="More" onClick="{{inc}}"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+</div>
+
+<div style="flex: 1"></div>
+<a href="{{href}}" style="display: flex; align-items: center; justify-content: center; min-height: 56px; border-radius: 16px; background: var(--tint); color: #FFFDF9; font-size: 17px; font-weight: 600">{{cta}}</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { pick: 'new', qty: 1 }; }
+renderVals() {
+const p = this.state.pick, q = this.state.qty;
+const rad = (k) => (p === k ? 'radio on' : 'radio');
+const cans = (n) => n + (n === 1 ? ' can' : ' cans');
+let cta = 'Next: set the date', href = 'Picker-Date.dc.html';
+if (p === 'a') { cta = 'Add ' + cans(q) + ' to Pantry (makes ' + (6 + q) + ')'; href = 'Inventory.dc.html'; }
+if (p === 'b') { cta = 'Add ' + cans(q) + ' to Garage (makes ' + (12 + q) + ')'; href = 'Inventory.dc.html'; }
+return {
+radA: rad('a'), radB: rad('b'), radNew: rad('new'),
+onA: p === 'a' ? 'true' : 'false', onB: p === 'b' ? 'true' : 'false', onNew: p === 'new' ? 'true' : 'false',
+pickA: () => this.setState({ pick: 'a' }),
+pickB: () => this.setState({ pick: 'b' }),
+pickNew: () => this.setState({ pick: 'new' }),
+qty: q,
+inc: () => this.setState({ qty: q + 1 }),
+dec: () => this.setState({ qty: Math.max(1, q - 1) }),
+cta, href
+};
+}
+}
+</script>
+</body>
+</html>

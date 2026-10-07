@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Printed date picker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--track:#E9E2D6;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:var(--track);border-radius:9px;padding:2px}
+.seg button{border:none;background:transparent;min-height:34px;border-radius:7px;font-size:15px;font-weight:500}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.months{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.m{min-height:52px;border:none;border-radius:14px;background:var(--card);font-size:17px;font-weight:500}
+.m.on{background:var(--tint);color:#FFFDF9;font-weight:700}
+.m.now{box-shadow:inset 0 0 0 1.5px var(--ink3)}
+.yr{width:48px;height:48px;border-radius:24px;border:none;background:var(--card);display:flex;align-items:center;justify-content:center;padding:0;color:var(--tint)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #5A5248">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 54px; height: 200px; border-radius: 12px 12px 0 0; background: #C9C1B5"></div>
+<div style="position: absolute; left: 0; right: 0; top: 104px; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: center; padding-top: 6px"><span style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep)"></span></div>
+<header style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 8px 4px">
+<a href="Add-Form.dc.html" style="justify-self: start; min-height: 44px; display: flex; align-items: center; padding: 0 8px; font-size: 17px; color: var(--tint)">Cancel</a>
+<h1 style="margin: 0; font-size: 17px; font-weight: 600">Printed date</h1>
+<a href="Add-Form.dc.html" style="justify-self: end; min-height: 44px; display: flex; align-items: center; padding: 0 8px; font-size: 17px; font-weight: 600; color: var(--tint)">Done</a>
+</header>
+
+<div style="padding: 8px 16px 0; display: flex; flex-direction: column; gap: 16px; flex: 1">
+<div class="seg" role="group" aria-label="Date type">
+<button class="{{bestCls}}" onClick="{{setBest}}">Best by</button>
+<button class="{{useCls}}" onClick="{{setUse}}">Use by / Expires</button>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between">
+<button class="yr" aria-label="Earlier year" onClick="{{yDown}}"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="stroke-width: 2.2"><path d="M15 5l-7 7 7 7"></path></svg></button>
+<span class="num" style="font-size: 30px; font-weight: 700">{{year}}</span>
+<button class="yr" aria-label="Later year" onClick="{{yUp}}"><svg class="ic" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" style="stroke-width: 2.2"><path d="M9 5l7 7-7 7"></path></svg></button>
+</div>
+
+<div class="months" role="radiogroup" aria-label="Month">
+<sc-for list="{{months}}" as="m" hint-placeholder-count="12">
+<button class="{{m.cls}}" role="radio" aria-checked="{{m.on}}" onClick="{{m.pick}}">{{m.name}}</button>
+</sc-for>
+</div>
+
+<div style="background: var(--card); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 8px"><span class="num" style="font-size: 17px; font-weight: 700">{{label}}</span><span class="badge" style="{{badgeStyle}}">{{state}}</span></div>
+<p style="margin: 0; font-size: 15px; color: var(--ink2); line-height: 1.35">{{explain}}</p>
+</div>
+
+<div style="flex: 1"></div>
+<a href="Add-Form.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 52px; margin-bottom: 38px; border-radius: 16px; background: var(--track); font-size: 17px; font-weight: 600">No date on the package</a>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { kind: 'best', year: 2026, month: 2 }; }
+renderVals() {
+const s = this.state;
+const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const nowY = 2026, nowM = 9;
+const months = names.map((name, i) => {
+const on = i === s.month;
+const isNow = s.year === nowY && i === nowM;
+return { name, on: on ? 'true' : 'false', cls: 'm' + (on ? ' on' : '') + (isNow && !on ? ' now' : ''), pick: () => this.setState({ month: i }) };
+});
+const d = (s.year * 12 + s.month) - (nowY * 12 + nowM);
+const styles = {
+'Good': 'color: #2E6B4F; background: #E1EEE5',
+'Use soon': 'color: #2B241E; background: #E9E2D6',
+'Caution': 'color: #8A5A00; background: #FBEACB',
+'Inspect': 'color: #8A5A00; box-shadow: inset 0 0 0 1.5px #8A5A00',
+'Expired': 'color: #A3241B; background: #F7DFDB'
+};
+let st, ex;
+if (d > 1) { st = 'Good'; ex = 'Counts toward both ends of your runway.'; }
+else if (d >= 0) { st = 'Use soon'; ex = 'Inside the 30-day notice window. Still counts fully.'; }
+else if (s.kind === 'use') { st = 'Expired'; ex = 'Past a use-by date. Saved, but left out of your runway.'; }
+else if (d > -20) { st = 'Caution'; ex = 'Past best-by but inside the canned-goods window. Counts toward the high end; eat or rotate first.'; }
+else if (d > -24) { st = 'Inspect'; ex = 'Near the end of its window. Check for bulging, rust or leaks.'; }
+else { st = 'Expired'; ex = 'Past the canned-goods window. Saved, but left out of your runway.'; }
+return {
+months, year: s.year,
+yUp: () => this.setState({ year: s.year + 1 }),
+yDown: () => this.setState({ year: s.year - 1 }),
+bestCls: s.kind === 'best' ? 'on' : '', useCls: s.kind === 'use' ? 'on' : '',
+setBest: () => this.setState({ kind: 'best' }),
+setUse: () => this.setState({ kind: 'use' }),
+label: (s.kind === 'best' ? 'Best by ' : 'Use by ') + names[s.month] + ' ' + s.year,
+state: st, badgeStyle: styles[st], explain: ex
+};
+}
+}
+</script>
+</body>
+</html>

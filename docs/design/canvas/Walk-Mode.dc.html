@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pantry walk</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+.cam{--ink:#F6EFE4;--ink2:#CFC3B2;--tint:#86BBA6;--card:#FFFDF9;--dk:#2B241E;--dk2:#5F554B;--track:#ECE5DA;--deep:#2F5D50;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:rgba(40,34,27,.78);font-size:15px;font-weight:600}
+.corner{position:absolute;width:30px;height:30px;border-color:var(--ink);border-style:solid;border-width:0}
+.step{width:44px;height:44px;border-radius:12px;border:none;background:var(--track);color:var(--dk);display:flex;align-items:center;justify-content:center;padding:0}
+</style>
+</helmet>
+<div class="cam" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #1C1813">
+<div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(120% 60% at 50% 30%, #3A3128 0%, #1C1813 70%)"></div>
+
+<div style="position: absolute; top: 58px; left: 16px; right: 16px; display: flex; align-items: center; justify-content: space-between">
+<span class="pill"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Garage shelf</span>
+<a href="Walk-Summary.dc.html" style="min-height: 44px; display: flex; align-items: center; padding: 0 16px; border-radius: 22px; background: var(--ink); color: var(--dk); font-size: 17px; font-weight: 600">Done</a>
+</div>
+
+<div style="position: absolute; left: 0; right: 0; top: 116px; display: flex; justify-content: center">
+<span class="pill num" style="background: var(--deep); color: #FFFDF9"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>{{count}} added this walk</span>
+</div>
+
+<div aria-hidden="true" style="position: absolute; left: 70px; top: 190px; width: 250px; height: 150px">
+<span class="corner" style="left: 0; top: 0; border-left-width: 4px; border-top-width: 4px; border-top-left-radius: 16px"></span>
+<span class="corner" style="right: 0; top: 0; border-right-width: 4px; border-top-width: 4px; border-top-right-radius: 16px"></span>
+<span class="corner" style="left: 0; bottom: 0; border-left-width: 4px; border-bottom-width: 4px; border-bottom-left-radius: 16px"></span>
+<span class="corner" style="right: 0; bottom: 0; border-right-width: 4px; border-bottom-width: 4px; border-bottom-right-radius: 16px"></span>
+<span style="position: absolute; left: 20px; right: 20px; top: 74px; height: 2px; background: var(--tint)"></span>
+</div>
+
+<sc-if value="{{hasLast}}" hint-placeholder-val="{{ true }}">
+<div style="position: absolute; left: 16px; right: 16px; top: 368px; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 6px 0 14px; border-radius: 14px; background: rgba(40,34,27,.85); font-size: 15px">
+<svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="color: var(--tint)"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span style="flex: 1; color: var(--ink2)">Added <span style="color: var(--ink)">{{last}}</span></span>
+<button onClick="{{undo}}" style="min-height: 40px; padding: 0 12px; border: none; background: transparent; color: var(--tint); font-weight: 600">Undo</button>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 8px; right: 8px; bottom: 30px; padding: 18px 16px 16px; border-radius: 28px; background: var(--card); color: var(--dk); display: flex; flex-direction: column; gap: 14px">
+<div>
+<div style="font-size: 13px; font-weight: 600; color: var(--dk2); text-transform: uppercase; letter-spacing: .3px">Barcode match · {{item.cat}}</div>
+<div style="font-size: 22px; font-weight: 700; margin-top: 2px">{{item.name}}</div>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<button class="step" aria-label="Fewer" onClick="{{dec}}"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 12h12"></path></svg></button>
+<span class="num" style="min-width: 40px; text-align: center; font-size: 26px; font-weight: 700">{{qty}}</span>
+<button class="step" aria-label="More" onClick="{{inc}}"><svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></button>
+<span style="font-size: 17px; color: var(--dk2)">{{item.unit}}</span>
+<span style="flex: 1"></span>
+<button style="min-height: 44px; padding: 0 12px; border-radius: 12px; border: none; background: var(--track); color: var(--dk); font-size: 15px; font-weight: 600">{{item.date}}</button>
+</div>
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px">
+<button onClick="{{skip}}" style="min-height: 56px; border-radius: 16px; border: none; background: var(--track); color: var(--dk); font-size: 17px; font-weight: 600">Skip</button>
+<button onClick="{{add}}" style="min-height: 56px; border-radius: 16px; border: none; background: var(--deep); color: #FFFDF9; font-size: 17px; font-weight: 600">Add to Garage shelf</button>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(p) { super(p); this.state = { i: 0, count: 7, qty: 1, last: 'White rice · 20 lb' }; }
+renderVals() {
+const list = [
+{ name: 'Water jug, 7 gal', cat: 'Water', unit: 'jug', date: 'Filled today' },
+{ name: 'Pinto beans, Mylar bucket', cat: 'Food', unit: 'bucket', date: 'Packed 2025' },
+{ name: 'Bottled water, 24 × 0.5 L', cat: 'Water', unit: 'case', date: 'Best by Jun 2027' }
+];
+const item = list[this.state.i % list.length];
+const next = () => ({ i: this.state.i + 1, qty: 1 });
+return {
+item, qty: this.state.qty, count: this.state.count,
+hasLast: !!this.state.last, last: this.state.last,
+inc: () => this.setState({ qty: this.state.qty + 1 }),
+dec: () => this.setState({ qty: Math.max(1, this.state.qty - 1) }),
+add: () => this.setState(Object.assign(next(), { count: this.state.count + 1, last: item.name + ' × ' + this.state.qty })),
+skip: () => this.setState(next()),
+undo: () => this.setState({ count: Math.max(0, this.state.count - 1), last: '' })
+};
+}
+}
+</script>
+</body>
+</html>

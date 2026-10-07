@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Runway dashboard, timeline</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+.hs{--bg:#F6F1E9;--card:#FFFDF9;--ink:#2B241E;--ink2:#5F554B;--ink3:#776C61;--sep:#E6DED2;--tint:#2F5D50;--tintSoft:#E2ECE6;--amber:#8A5A00;--amberBg:#FBEACB;--track:#E3DACC;--bar:rgba(255,253,249,.92);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.num{font-family:ui-rounded,"SF Pro Rounded",-apple-system,sans-serif;font-variant-numeric:tabular-nums}
+.ic{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tl{display:grid;grid-template-columns:78px 22px 1fr;column-gap:10px;position:relative}
+.when{text-align:right;padding-top:1px}
+.when b{display:block;font-size:15px;font-weight:700}
+.when span{display:block;font-size:12px;color:var(--ink2)}
+.node{width:14px;height:14px;border-radius:7px;margin:4px auto 0;background:var(--card);box-shadow:inset 0 0 0 3px var(--ink3);position:relative;z-index:1}
+.what{padding-bottom:22px}
+.what b{display:block;font-size:17px;font-weight:600}
+.what span{display:block;font-size:15px;color:var(--ink2)}
+.pill{display:inline-flex;align-items:center;gap:6px;margin-top:8px;min-height:36px;padding:0 14px;border-radius:18px;font-size:15px;font-weight:600}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:83px;background:var(--bar);border-top:0.5px solid var(--sep);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding-top:7px;box-sizing:border-box}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--ink3)}
+.tab.on{color:var(--tint)}
+</style>
+</helmet>
+<div class="hs" style="width: 390px; height: 844px; position: relative; overflow: hidden">
+<div style="padding: 54px 20px 100px; display: flex; flex-direction: column; gap: 18px">
+<header style="padding-top: 6px">
+<div style="font-size: 15px; color: var(--ink2); font-weight: 500">Home · 2 adults · today, Oct 6</div>
+<h1 style="margin: 2px 0 0; font-size: 30px; line-height: 1.15; font-weight: 700; letter-spacing: -0.3px">Water runs short first, around <span class="num" style="color: var(--tint)">day 9–11</span>.</h1>
+</header>
+
+<div style="background: var(--card); border-radius: 22px; padding: 20px 16px 4px 4px; position: relative">
+<div style="position: absolute; left: 103px; top: 30px; bottom: 40px; width: 2px; background: var(--track)"></div>
+
+<div class="tl">
+<div class="when"><b>Today</b><span>Oct 6</span></div>
+<div class="node" style="box-shadow: inset 0 0 0 3px var(--amber)"></div>
+<div class="what"><b>6 cans black beans</b><span>Past best-by · eat or rotate</span></div>
+</div>
+
+<div class="tl">
+<div class="when"><b class="num" style="color: var(--tint)">Day 9–11</b><span>Oct 15–17</span></div>
+<div class="node" style="background: var(--tint); box-shadow: none; width: 18px; height: 18px; border-radius: 9px; margin-top: 2px"></div>
+<div class="what"><b style="color: var(--tint)">Water runs out</b><span>23 gal at 2 gal a day</span>
+<a class="pill" href="#" style="background: var(--tint); color: #fff"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>10 gal moves this to day 14</a></div>
+</div>
+
+<div class="tl">
+<div class="when"><b class="num">Day 14</b><span>Oct 20</span></div>
+<div class="node" style="border-radius: 3px; transform: rotate(45deg); width: 12px; height: 12px; box-shadow: inset 0 0 0 3px var(--ink)"></div>
+<div class="what"><b>Your target</b><span>Change it in Settings</span></div>
+</div>
+
+<div class="tl">
+<div class="when"><b class="num">Day 18–24</b><span>Oct 24–30</span></div>
+<div class="node"></div>
+<div class="what"><b>Food runs out</b><span>4,400 kcal a day for 2 adults</span></div>
+</div>
+
+<div class="tl">
+<div class="when"><b class="num">Day 21</b><span>Oct 27</span></div>
+<div class="node" style="box-shadow: inset 0 0 0 3px var(--amber)"></div>
+<div class="what"><b>Go-bag (Hampton): water expires</b><span>Swap 3 × 1 L bottles</span></div>
+</div>
+</div>
+
+<p style="margin: -4px 4px 0; font-size: 13px; color: var(--ink2)">Ranges: the early day counts good stock only; the later day includes items to eat or rotate.</p>
+</div>
+
+<nav class="tabbar" aria-label="Tabs">
+<a class="tab on" href="#"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M3.5 16a8.5 8.5 0 0 1 17 0"></path><path d="M12 16l4.5-5"></path><path d="M3 20h18"></path></svg><span>Runway</span></a>
+<a class="tab" href="#"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"></path><path d="M3 7.5l9 4.5 9-4.5M12 12v9"></path></svg><span>Inventory</span></a>
+<a class="tab" href="#"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><rect x="5" y="7" width="14" height="14" rx="3.5"></rect><path d="M9 7V5.5a3 3 0 0 1 6 0V7M9 13h6"></path></svg><span>Kits</span></a>
+<a class="tab" href="#"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"></path></svg><span>Settings</span></a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
