@@ -2,7 +2,7 @@
 
 **Goal:** Hampton can enter his real pantry by hand on the phone and read the answer back. After this slice the app has a Dashboard that shows food, water and effective runway as a low–high range with the top of the Focus next list, an Inventory that lists every lot with its shelf-life state and lets him use up, adjust, edit or delete it, an Add flow that creates a lot (and a product, if new) quickly with any expiry date past or future, and Settings for the household, locations and backup. Barcode scanning comes next; this slice proves the screens, the view-model pattern and the entry fields against real shelves first.
 
-Read first: CLAUDE.md (Architecture rules, Working style), docs/spec.md → **Runway dashboard**, **Screens and flows** and **Data model** (Units, Consumption, Shelf life), and the Slice 1–2 code: `RunwayCalculator`, `ShelfLifeEvaluator`, `ShelfLifeProfileResolver`, `resolvedClimate`, the repository protocols in `Repositories.swift`, `GRDBBackup`, and the app target (`AppServices`, `RootView`, `ContentView`, `SamplePantry`).
+Read first: CLAUDE.md (Architecture rules, Working style), docs/spec.md → the shelf-life state table (including **Use soon**), **Runway dashboard**, **Screens and flows** and **Data model** (Units, Consumption, Shelf life), and the Slice 1–2 code: `RunwayCalculator`, `ShelfLifeEvaluator`, `ShelfLifeProfileResolver`, `resolvedClimate`, the repository protocols in `Repositories.swift`, `GRDBBackup`, and the app target (`AppServices`, `RootView`, `ContentView`, `SamplePantry`).
 
 **Slices 1 and 2 are the ground truth for type names and shapes.** Where this file names a type or field differently from the code, follow the code and mention the difference in your plan. If a Core or Store type needs to change, list it in the plan before touching it.
 
@@ -22,7 +22,7 @@ These are defaults chosen where the spec leaves a choice open. Hampton can overt
 4. **Backup restore replaces everything.** `GRDBBackup.import` only fills an empty database, and the app always has the default site, so restore becomes "erase and import" in one transaction, behind a confirmation that says what will be lost and offers to export first.
 5. **A lot can be deleted** (for entry mistakes), separately from using it up. Using it up archives at zero, as Slice 2 built; delete removes the row and its shelf-life override.
 6. **Calories are entered per base unit, with a per-package helper.** The product form shows "kcal per lb" (or per count, per gal) and offers "kcal per package + package size" that converts on entry. Only the per-base-unit value is stored.
-7. **"Expiring soon"** means Caution, Inspect or Expired, or Good with a printed date within the next 30 days. The 30 days is a named constant in Core.
+7. **Use soon is a real lot state, and its notice window is stored on the site.** The spec's Use soon state (within the notice window before the printed date) is added to `LotState` in Task 1. The window defaults to 30 days, is stored per site (the spec's "per household"), and is edited in Settings. "Expiring soon" in Inventory means Use soon, Caution or Inspect, as the spec says.
 8. **Last-used location** is remembered per site in `UserDefaults`. It's a UI convenience, not domain data, so it stays out of the database and the backup.
 9. **Shelf-life profiles get display names in the bundled JSON** (a `name` field per profile), so the product form's picker reads as words, not keys. Defaults stay data.
 10. **Kits are a toggle on a location** in this slice ("This is a kit", plus "Counts toward runway", off by default). Templates, inspection and the Kits tab are later.
@@ -44,9 +44,11 @@ Barcode and Live Text scanning, Open Food Facts lookup, pantry walk mode (Slice 
 The Inventory and the Focus next list need each lot's state, and that state must be exactly what the runway used. Today that logic is private to `RunwayCalculator`.
 
 - [ ] A Core function that takes `RunwayInputs`, the profile table and `today`, and returns a status per unarchived lot: the lot, its product, its location chain (for a "Garage › Shelf 2" path), resolved climate and humidity, the `ShelfLifeEvaluation` (state, usable-by, flags), and whether it counts toward this site's runway (kit exclusion included). Lots the runway can't place (missing product, unresolved location, missing profile) come back with that problem rather than being dropped.
-- [ ] `RunwayCalculator` uses this function for its own per-lot step, so the two can't drift. Its public API and results don't change.
+- [ ] **Use soon** (spec, shelf-life state table): `LotState.useSoon` for a lot within the notice window before its printed date. Best-by lots go Good → Use soon → Caution → Inspect → Expired; use-by lots skip Caution and Inspect (Good → Use soon → Expired). A lot with no printed date is Good. `ShelfLifeEvaluator.evaluate` takes the notice window as a parameter.
+- [ ] `Site` gains the notice window in days (default 30, a positive whole number). Persisting it is Task 4.
+- [ ] `RunwayCalculator` uses this function for its own per-lot step, so the two can't drift. Use soon lots count toward both the low and the high end, so the fixture's food and water low/high values don't change.
 
-**Tests:** the fixture's lots get the states the Slice 1 tests imply (the 14-month-old beans, the go-bag MRE excluded from runway, the Mylar beans with no printed date flagged `missingDate`); a lot at another site is absent; a missing product is reported, not dropped; the fixture runway test passes unchanged.
+**Tests:** the fixture's lots get the states the Slice 1 tests imply (re-derived by hand where a Good lot is now Use soon) (the 14-month-old beans, the go-bag MRE excluded from runway, the Mylar beans with no printed date flagged `missingDate`); a lot at another site is absent; a missing product is reported, not dropped; the fixture runway test passes unchanged. Table-driven Use soon boundaries: the day the window opens, the printed date itself, a use-by lot moving from Use soon straight to Expired, and a window of a different length. Use soon lots count in the low end.
 
 **Done when:** every lot state the UI shows comes from this one function.
 
@@ -54,21 +56,21 @@ The Inventory and the Focus next list need each lot's state, and that state must
 
 - [ ] A Core function that builds the Focus next list from a `SiteRunway` and the Task 1 statuses, in the spec's priority order, for items 1 and 2 only:
   1. The limiting category with the amount needed to reach the next target, in the category's natural unit ("+18 gal water to reach 14 days", "+42,000 kcal food to reach 14 days"). Expressed as data (category, amount, unit, target days); wording is the app's job.
-  2. Lots in Caution or Inspect, soonest usable-by first, ties broken by product name.
+  2. Lots in Caution or Inspect, soonest usable-by first, then Use soon lots by printed date; ties broken by product name.
 - [ ] Runway problems that stop the math (no occupants) come first as their own item; lots missing nutrition or water volume appear as one item each with their count.
 - [ ] Items 3–5 (missing capabilities, kit gaps, maintenance) are not built; the type leaves room for them.
 
-**Tests:** limiting-category item uses the next target's shortfall; no item 1 when the effective low is already past the last target; Caution and Inspect ordered by usable-by; expired lots aren't listed as "eat or rotate"; zero occupants puts the problem first; the fixture produces the expected list.
+**Tests:** limiting-category item uses the next target's shortfall; no item 1 when the effective low is already past the last target; Caution and Inspect ordered by usable-by, followed by Use soon by printed date; expired lots aren't listed as "eat or rotate"; zero occupants puts the problem first; the fixture produces the expected list.
 
 **Done when:** the Dashboard can render Focus next without deciding anything itself.
 
 ## Task 3: Inventory query in Core
 
-- [ ] Group the Task 1 statuses by location (full path, parents before children, kits marked) or by category, with lots inside each group ordered by state severity (Expired, Inspect, Caution, Good) then usable-by.
+- [ ] Group the Task 1 statuses by location (full path, parents before children, kits marked) or by category, with lots inside each group ordered by state severity (Expired, Inspect, Caution, Use soon, Good) then usable-by.
 - [ ] Search matches product name or lot notes, ignoring case and diacritics.
 - [ ] Filters: expiring soon (Decision 7), and one category (for the Dashboard's drill-in). Filters and search combine.
 
-**Tests:** table-driven grouping and ordering over the fixture; search hits name and notes; the expiring-soon boundary at exactly 30 days; category filter plus search together; an empty result is an empty list, not an error.
+**Tests:** table-driven grouping and ordering over the fixture; search hits name and notes; expiring soon includes Use soon, Caution and Inspect and leaves out Good and Expired; category filter plus search together; an empty result is an empty list, not an error.
 
 **Done when:** Inventory's view model is a subscription plus one call to this function.
 
@@ -76,6 +78,7 @@ The Inventory and the Focus next list need each lot's state, and that state must
 
 Small additions the screens need. Each one is listed in the plan before it's made.
 
+- [ ] Migration `v2_site_notice_window`: the site's notice window as a column defaulting to 30, saved and loaded through `SiteRepository`. The backup format version goes up by one, and a version 1 file still imports with the default.
 - [ ] `LotRepository.delete(_:)`: removes the lot and its shelf-life override; deleting a missing lot does nothing.
 - [ ] `KitRepository.delete(_:)`: removes the kit and clears its location's kit link, so a location can stop being a kit and later be deleted.
 - [ ] `ProductRepository.list()`, if `search(name: "")` isn't clear enough at the call site; otherwise note that `search` covers it.
@@ -83,7 +86,7 @@ Small additions the screens need. Each one is listed in the plan before it's mad
 - [ ] Restore (Decision 4): a Store operation that erases every table and imports a backup document in one transaction, so a bad file leaves the old data in place. `GRDBBackup.import` keeps its empty-database rule.
 - [ ] `GRDBBackup` joins `AppServices` behind a small protocol in Core, so Settings doesn't see GRDB.
 
-**Tests:** delete a lot with an override and both are gone; delete a kit and its location can then be deleted; every bundled profile has a non-empty name; restore over a populated database leaves exactly the file's contents; a restore that fails partway leaves the original data intact; export → restore → export matches apart from `exportedAt`.
+**Tests:** the notice window round-trips through the site repository and the backup; a version 1 backup imports with 30 days; delete a lot with an override and both are gone; delete a kit and its location can then be deleted; every bundled profile has a non-empty name; restore over a populated database leaves exactly the file's contents; a restore that fails partway leaves the original data intact; export → restore → export matches apart from `exportedAt`.
 
 **Done when:** every write the screens need exists as a repository call.
 
@@ -99,7 +102,7 @@ Small additions the screens need. Each one is listed in the plan before it's mad
 
 ## Task 6: Settings: household and locations
 
-- [ ] Site name, editable.
+- [ ] Site name, editable, and the Use soon notice window in days (Decision 7).
 - [ ] Household: add, edit and remove people (name, kcal/day defaulting to 2,000, water gal/day defaulting to 1.0).
 - [ ] Locations as a tree: add, rename, move under a parent, set climate class (with "inherit from parent"), humidity, and the kit toggles (Decision 10). Show each class's multiplier and example spots from the spec's climate table as help text.
 - [ ] Deleting a location that still holds lots, has children or is a kit shows why, using the typed `RepositoryError`s, instead of failing silently.
@@ -128,7 +131,7 @@ The spec's goal is a bulk item or an old can entered in under 15 seconds.
 
 ## Task 9: Inventory
 
-- [ ] Lots grouped by location or by category (segmented control), with search and an Expiring soon filter (Task 3). Each row: product name, quantity in a readable unit, location path when grouped by category, state badge (Good normal, Caution and Inspect amber with Inspect's check prompt, Expired red) and flag icons (missing date, power-dependent, humidity risk).
+- [ ] Lots grouped by location or by category (segmented control), with search and an Expiring soon filter (Task 3). Each row: product name, quantity in a readable unit, location path when grouped by category, state badge (Good normal, Use soon a neutral badge with an amber clock, Caution and Inspect amber with Inspect's check prompt, Expired red; every badge pairs a word and an icon with its color, never color alone) and flag icons (missing date, power-dependent, humidity risk).
 - [ ] Swipe to **Use**: enter an amount in any unit of the product's kind (count products prefill 1); over-consuming shows the available amount. Swipe to **Adjust**: set the remaining quantity directly, for corrections.
 - [ ] Lot detail: every field, usable-by date, why it's in its state (printed date, profile, window, climate), and Edit, Delete (Decision 5) and Archive.
 - [ ] Opening Inventory from a Dashboard category shows that category, with a visible way to clear the filter.
@@ -139,7 +142,7 @@ The spec's goal is a bulk item or an old can entered in under 15 seconds.
 
 - [ ] Food and water cards, each with days as a range (Decision 3), the amount on hand (kcal, gal) and the daily need. Water shows untreated non-potable gallons beside the figure, never inside it.
 - [ ] Effective runway range with the limiting category called out, and a one-line reminder to plan around the low number.
-- [ ] Focus next (Task 2), with each Caution or Inspect lot opening its lot detail.
+- [ ] Focus next (Task 2), with each Caution, Inspect or Use soon lot opening its lot detail.
 - [ ] Empty and problem states: no people ("Add your household to compute runway" linking to Settings), no lots ("Add your first item"), and lots missing calories or water volume linking to their products.
 - [ ] Tapping a category card opens Inventory filtered to that category (Task 9).
 
@@ -163,7 +166,8 @@ The spec's goal is a bulk item or an old can entered in under 15 seconds.
 ## Dependencies
 
 - Task 1 blocks Tasks 2 and 3.
-- Tasks 1, 4 and 5 have no Slice 3 dependencies and can start in any order.
+- Tasks 1 and 5 have no Slice 3 dependencies and can start in any order.
+- Task 4 depends on Task 1 (the site's notice window).
 - Task 6 depends on Tasks 4 and 5.
 - Task 7 depends on Tasks 4 and 5.
 - Task 8 depends on Tasks 6 and 7.
