@@ -88,7 +88,8 @@ public enum RunwayCalculator {
     /// Food and water runway for `site` on `today`.
     ///
     /// Counts only unarchived lots whose location resolves to `site`, skipping lots inside a kit
-    /// that doesn't count toward site runway. Occupants from other sites are ignored.
+    /// that doesn't count toward site runway. Occupants from other sites are ignored. Shelf-life
+    /// overrides are looked up by product and lot ID; see `ShelfLifeProfileResolver`.
     public static func runway(
         for site: Site,
         occupants: [Person],
@@ -96,10 +97,14 @@ public enum RunwayCalculator {
         products: [Product],
         locations: [Location],
         kits: [Kit],
+        productShelfLifeOverrides: [ProductID: ShelfLifeOverride] = [:],
+        lotShelfLifeOverrides: [LotID: ShelfLifeOverride] = [:],
         profiles: ShelfLifeProfileTable,
         on today: CalendarDate,
         targets: [Double] = defaultTargets
     ) -> SiteRunway {
+        let resolver = ShelfLifeProfileResolver(
+            table: profiles, productOverrides: productShelfLifeOverrides, lotOverrides: lotShelfLifeOverrides)
         let productsByID = Dictionary(products.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let locationsByID = Dictionary(locations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let kitsByID = Dictionary(kits.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -136,15 +141,16 @@ public enum RunwayCalculator {
                 continue
             }
             guard product.category == .food || product.category == .water else { continue }
-            guard let profile = profiles[product.shelfLifeProfileKey] else {
+            guard let profile = resolver.profile(for: lot, product: product) else {
                 problems.append(.missingProfile(lot.id, product.shelfLifeProfileKey))
                 continue
             }
 
-            let climate = lot.climateOverride ?? chain.lazy.compactMap(\.climateClass).first ?? .fallback
+            let climate = StorageClimate(lot: lot, chain: chain)
             let humidity = chain.lazy.compactMap(\.humidity).first ?? .dry
             let state = ShelfLifeEvaluator.evaluate(
-                lot, profile: profile, climate: climate, humidity: humidity, on: today
+                lot, profile: profile, climate: climate.climateClass, humidity: humidity,
+                windowMultiplier: climate.windowMultiplier, on: today
             ).state
 
             switch product.category {

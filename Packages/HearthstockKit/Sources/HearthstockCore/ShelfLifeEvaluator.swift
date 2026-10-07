@@ -40,6 +40,9 @@ public enum ShelfLifeEvaluator {
 
     /// Evaluates a lot on `today` under the climate and humidity it's stored in.
     ///
+    /// `windowMultiplier`, when set, replaces the climate class's multiplier (a location's override).
+    /// The class still decides power dependence.
+    ///
     /// Refrigerated and frozen lots are evaluated as climate controlled and flagged power-dependent
     /// until per-product cold-storage profiles exist.
     public static func evaluate(
@@ -47,14 +50,15 @@ public enum ShelfLifeEvaluator {
         profile: ShelfLifeProfile,
         climate: ClimateClass,
         humidity: Humidity = .dry,
+        windowMultiplier: Double? = nil,
         on today: CalendarDate
     ) -> ShelfLifeEvaluation {
         var flags: Set<LotFlag> = []
         let multiplier: Double
         if let value = climate.defaultWindowMultiplier {
-            multiplier = value
+            multiplier = windowMultiplier ?? value
         } else {
-            multiplier = ClimateClass.climateControlled.defaultWindowMultiplier ?? 1.0
+            multiplier = windowMultiplier ?? ClimateClass.climateControlled.defaultWindowMultiplier ?? 1.0
             flags.insert(.powerDependent)
         }
         if humidity == .humid && lot.packaging == .none {

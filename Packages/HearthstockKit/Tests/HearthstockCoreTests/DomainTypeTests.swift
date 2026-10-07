@@ -144,3 +144,79 @@ import Testing
 private func day(_ year: Int, _ month: Int, _ day: Int) -> CalendarDate {
     CalendarDate(year: year, month: month, day: day)!
 }
+
+@Suite struct StorageClimateTests {
+    let site = SiteID()
+
+    private func lot(override: ClimateClass? = nil) -> Lot {
+        Lot(productID: ProductID(), quantity: 1, acquiredDate: day(2026, 1, 1),
+            locationID: LocationID(), climateOverride: override)
+    }
+
+    @Test func nothingSetFallsBackToTheFallbackClass() {
+        let shelf = Location(siteID: site, name: "Shelf")
+        let climate = StorageClimate(lot: lot(), chain: [shelf])
+        #expect(climate == StorageClimate(climateClass: .fallback, windowMultiplier: nil))
+    }
+
+    @Test func classAloneUsesItsDefaultMultiplier() {
+        let garage = Location(siteID: site, name: "Garage", climateClass: .hot)
+        #expect(StorageClimate(lot: lot(), chain: [garage]) == StorageClimate(climateClass: .hot, windowMultiplier: nil))
+    }
+
+    @Test func locationOverrideAloneKeepsTheClass() {
+        let garage = Location(siteID: site, name: "Garage", climateClass: .hot, climateMultiplierOverride: 0.6)
+        #expect(StorageClimate(lot: lot(), chain: [garage]) == StorageClimate(climateClass: .hot, windowMultiplier: 0.6))
+    }
+
+    @Test func childInheritsClassAndOverrideFromParent() {
+        let garage = Location(siteID: site, name: "Garage", climateClass: .hot, climateMultiplierOverride: 0.6)
+        let shelf = Location(siteID: site, name: "Shelf", parentID: garage.id)
+        #expect(StorageClimate(lot: lot(), chain: [shelf, garage]) == StorageClimate(climateClass: .hot, windowMultiplier: 0.6))
+    }
+
+    @Test func childOverrideAloneWinsOverParentOverrideAndInheritsParentClass() {
+        let garage = Location(siteID: site, name: "Garage", climateClass: .hot, climateMultiplierOverride: 0.6)
+        let shelf = Location(siteID: site, name: "Shelf", parentID: garage.id, climateMultiplierOverride: 0.8)
+        #expect(StorageClimate(lot: lot(), chain: [shelf, garage]) == StorageClimate(climateClass: .hot, windowMultiplier: 0.8))
+    }
+
+    @Test func childsOwnClassShadowsParentsOverride() {
+        let garage = Location(siteID: site, name: "Garage", climateClass: .hot, climateMultiplierOverride: 0.6)
+        let cellar = Location(siteID: site, name: "Cellar", parentID: garage.id, climateClass: .coolDry)
+        #expect(StorageClimate(lot: lot(), chain: [cellar, garage]) == StorageClimate(climateClass: .coolDry, windowMultiplier: nil))
+    }
+
+    @Test func overrideOnAnAncestorAboveTheNearestClassIsShadowed() {
+        let house = Location(siteID: site, name: "House", climateMultiplierOverride: 0.9)
+        let garage = Location(siteID: site, name: "Garage", parentID: house.id, climateClass: .hot)
+        #expect(StorageClimate(lot: lot(), chain: [garage, house]) == StorageClimate(climateClass: .hot, windowMultiplier: nil))
+    }
+
+    @Test func overrideWithoutAnyClassInTheChainUsesFallbackClass() {
+        let shelf = Location(siteID: site, name: "Shelf", climateMultiplierOverride: 0.7)
+        #expect(StorageClimate(lot: lot(), chain: [shelf]) == StorageClimate(climateClass: .fallback, windowMultiplier: 0.7))
+    }
+
+    @Test func lotClimateOverrideReplacesTheWholeChain() {
+        let garage = Location(siteID: site, name: "Garage", climateClass: .hot, climateMultiplierOverride: 0.6)
+        let climate = StorageClimate(lot: lot(override: .coolDry), chain: [garage])
+        #expect(climate == StorageClimate(climateClass: .coolDry, windowMultiplier: nil))
+    }
+
+    @Test func locationRoundTripsItsMultiplierOverrideThroughJSON() throws {
+        let location = Location(siteID: site, name: "Shed", climateClass: .hot, climateMultiplierOverride: 0.6)
+        let decoded = try JSONDecoder().decode(Location.self, from: JSONEncoder().encode(location))
+        #expect(decoded == location)
+        #expect(decoded.climateMultiplierOverride == 0.6)
+    }
+
+    @Test func locationJSONWithoutTheFieldStillDecodes() throws {
+        let location = Location(siteID: site, name: "Shed")
+        var object = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(location)) as? [String: Any])
+        object.removeValue(forKey: "climateMultiplierOverride")
+        let decoded = try JSONDecoder().decode(Location.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(decoded.climateMultiplierOverride == nil)
+    }
+}

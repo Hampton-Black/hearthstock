@@ -32,3 +32,29 @@ public func resolvedClimate(
     }
     return .fallback
 }
+
+/// The climate a lot is evaluated under: a class, and a window multiplier when a location overrides the class's.
+struct StorageClimate: Hashable, Sendable {
+    var climateClass: ClimateClass
+    /// Nil uses the class's default multiplier.
+    var windowMultiplier: Double?
+
+    /// The lot's own class wins outright. Otherwise the class is the nearest one in `chain` (the lot's location and
+    /// its ancestors, nearest first), and the multiplier override is the nearest location that sets a class or an
+    /// override, if that one sets an override. So a child's own class shadows its parent's override, and an
+    /// override on a location with no class sits on top of the inherited class.
+    init(lot: Lot, chain: [Location]) {
+        if let override = lot.climateOverride {
+            self.init(climateClass: override, windowMultiplier: nil)
+            return
+        }
+        let climateClass = chain.lazy.compactMap(\.climateClass).first ?? .fallback
+        let setter = chain.first { $0.climateClass != nil || $0.climateMultiplierOverride != nil }
+        self.init(climateClass: climateClass, windowMultiplier: setter?.climateMultiplierOverride)
+    }
+
+    init(climateClass: ClimateClass, windowMultiplier: Double?) {
+        self.climateClass = climateClass
+        self.windowMultiplier = windowMultiplier
+    }
+}

@@ -19,9 +19,31 @@ public struct GRDBRunwayInputsLoader: RunwayInputsLoader {
     }
 
     private static func fetch(_ db: Database, siteID: SiteID) throws -> RunwayInputs {
+
         let key = siteID.stored
         guard let site = try SiteRecord.fetchOne(db, key: key) else {
             throw RepositoryError.siteNotFound(siteID)
+        }
+        // Products belong to no site, so every product override loads. A lot's override loads with its lot,
+        // which is why archived lots' are left behind.
+        let decoder = ColumnDecoder(table: ShelfLifeOverrideRecord.databaseTableName)
+        var productOverrides: [ProductID: ShelfLifeOverride] = [:]
+        for record in try ShelfLifeOverrideRecord.filter(Column("productId") != nil).fetchAll(db) {
+            let id: ProductID? = try decoder.optionalID("productId", record.productId)
+            if let id { productOverrides[id] = try record.toCore() }
+        }
+        var lotOverrides: [LotID: ShelfLifeOverride] = [:]
+        let lotOverrideRows = try ShelfLifeOverrideRecord.fetchAll(
+            db,
+            sql: """
+                SELECT shelf_life_override.* FROM shelf_life_override
+                JOIN lot ON lot.id = shelf_life_override.lotId
+                WHERE lot.siteId = ? AND lot.archived = 0
+                """,
+            arguments: [key])
+        for record in lotOverrideRows {
+            let id: LotID? = try decoder.optionalID("lotId", record.lotId)
+            if let id { lotOverrides[id] = try record.toCore() }
         }
         return RunwayInputs(
             site: try site.toCore(),
@@ -36,7 +58,9 @@ public struct GRDBRunwayInputsLoader: RunwayInputsLoader {
             locations: try LocationRecord.filter(Column("siteId") == key).order(Column("name"), Column("id")).fetchAll(db)
                 .map { try $0.toCore() },
             kits: try KitRecord.filter(Column("homeSiteId") == key).order(Column("createdAt"), Column("id")).fetchAll(db)
-                .map { try $0.toCore() }
+                .map { try $0.toCore() },
+            productShelfLifeOverrides: productOverrides,
+            lotShelfLifeOverrides: lotOverrides
         )
     }
 }

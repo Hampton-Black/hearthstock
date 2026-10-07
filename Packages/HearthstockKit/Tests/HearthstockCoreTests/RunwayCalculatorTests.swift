@@ -275,6 +275,95 @@ import Testing
         #expect(world.runway().nextTarget == nil)
     }
 
+    // MARK: Overrides
+
+    /// Canned low-acid printed 2024-10-06 in a climate-controlled pantry: 730 days, so today (2026-10-06)
+    /// is its last usable day. Counted in `high`, never in `low`.
+    private static let boundaryPrinted = "2024-10-06"
+
+    @Test func locationMultiplierOverrideMovesALotAcrossTheBoundaryDay() {
+        var world = World()
+        world.addFood(kcal: 100, quantity: 10, printed: Self.boundaryPrinted)
+        #expect(isApproximately(world.runway().food.highAmount, 1000))  // inspect on its last usable day
+
+        world.pantry.climateMultiplierOverride = 0.99  // 730 × 0.99 → 722 days: expired 8 days ago
+        #expect(isApproximately(world.runway().food.highAmount, 0))
+
+        world.pantry.climateMultiplierOverride = 1.01  // 730 × 1.01 → 737 days: still inspect
+        #expect(isApproximately(world.runway().food.highAmount, 1000))
+    }
+
+    @Test func locationMultiplierOverrideReplacesTheClassMultiplier() {
+        // A hot (×0.5) pantry overridden to ×1.0 behaves as climate controlled.
+        var world = World()
+        world.pantry.climateClass = .hot
+        world.addFood(kcal: 100, quantity: 10, printed: Self.boundaryPrinted)
+        #expect(isApproximately(world.runway().food.highAmount, 0))
+        world.pantry.climateMultiplierOverride = 1.0
+        #expect(isApproximately(world.runway().food.highAmount, 1000))
+    }
+
+    @Test func lotsInheritTheirParentsMultiplierOverride() {
+        var world = World()
+        world.pantry.climateMultiplierOverride = 0.5
+        let shelf = Location(siteID: world.site.id, name: "Shelf", parentID: world.pantry.id)
+        world.extraLocations = [shelf]
+        world.addFood(kcal: 100, quantity: 10, printed: Self.boundaryPrinted, in: shelf)
+        #expect(isApproximately(world.runway().food.highAmount, 0))
+    }
+
+    @Test func aLotsOwnClimateOverrideBeatsTheLocationMultiplierOverride() {
+        var world = World()
+        world.pantry.climateMultiplierOverride = 0.5
+        var lot = world.addFood(kcal: 100, quantity: 10, printed: Self.boundaryPrinted)
+        #expect(isApproximately(world.runway().food.highAmount, 0))
+        lot.climateOverride = .climateControlled
+        world.lots[0] = lot
+        #expect(isApproximately(world.runway().food.highAmount, 1000))
+    }
+
+    @Test func productOverrideChangesStateAndLotOverrideBeatsIt() {
+        // Printed 2026-01-01 canned low-acid: Caution today. A 6-month product override expires it.
+        var world = World()
+        let lot = world.addFood(kcal: 100, quantity: 10, printed: "2026-01-01")
+        let productID = lot.productID
+        func runway(product: ShelfLifeOverride?, lot lotOverride: ShelfLifeOverride?) -> SiteRunway {
+            RunwayCalculator.runway(
+                for: world.site, occupants: world.occupants, lots: world.lots, products: world.products,
+                locations: [world.pantry, world.goBag], kits: [world.kit],
+                productShelfLifeOverrides: product.map { [productID: $0] } ?? [:],
+                lotShelfLifeOverrides: lotOverride.map { [lot.id: $0] } ?? [:],
+                profiles: Self.profiles, on: Self.today)
+        }
+        #expect(isApproximately(runway(product: nil, lot: nil).food.highAmount, 1000))
+        #expect(isApproximately(runway(product: ShelfLifeOverride(extensionMonths: 6), lot: nil).food.highAmount, 0))
+        let both = runway(product: ShelfLifeOverride(extensionMonths: 6), lot: ShelfLifeOverride(extensionMonths: 36))
+        #expect(isApproximately(both.food.highAmount, 1000))
+        #expect(both.problems.isEmpty)
+    }
+
+    @Test func overridesDoNotRescueAnUnknownProfileKey() {
+        var world = World()
+        let lot = world.addFood(kcal: 100, quantity: 10)
+        world.products[0].shelfLifeProfileKey = "no_such_key"
+        let runway = RunwayCalculator.runway(
+            for: world.site, occupants: world.occupants, lots: world.lots, products: world.products,
+            locations: [world.pantry, world.goBag], kits: [world.kit],
+            productShelfLifeOverrides: [world.products[0].id: ShelfLifeOverride(extensionMonths: 6)],
+            profiles: Self.profiles, on: Self.today)
+        #expect(runway.problems == [.missingProfile(lot.id, "no_such_key")])
+    }
+
+    @Test func runwayInputsOverloadPassesOverridesThrough() {
+        var world = World()
+        let lot = world.addFood(kcal: 100, quantity: 10, printed: "2026-01-01")
+        let inputs = RunwayInputs(
+            site: world.site, occupants: world.occupants, lots: world.lots, products: world.products,
+            locations: [world.pantry, world.goBag], kits: [world.kit],
+            lotShelfLifeOverrides: [lot.id: ShelfLifeOverride(extensionMonths: 6)])
+        #expect(isApproximately(RunwayCalculator.runway(for: inputs, profiles: Self.profiles, on: Self.today).food.highAmount, 0))
+    }
+
     // MARK: Sample pantry
 
     /// Regression test for the runway math against a realistic pantry. Today is 2026-10-06; two adults

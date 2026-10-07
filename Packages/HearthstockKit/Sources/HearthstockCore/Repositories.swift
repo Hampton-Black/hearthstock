@@ -6,6 +6,7 @@ public enum RepositoryError: Error, Hashable, Sendable {
     case siteNotFound(SiteID)
     case locationNotFound(LocationID)
     case lotNotFound(LotID)
+    case productNotFound(ProductID)
     /// The location still holds lots (archived ones included); move or delete them first.
     case locationHasLots(LocationID)
     /// The location is still the parent of other locations.
@@ -69,6 +70,22 @@ public protocol LotRepository: Sendable {
     func observeLots(siteID: SiteID) -> AsyncThrowingStream<[Lot], any Error>
 }
 
+/// A user's edits to the bundled shelf-life table, kept per product and per lot. An override belongs to its
+/// product or lot and goes with it. Saving an empty override clears it: there's no difference between
+/// "nothing overridden" and "every field defers".
+public protocol ShelfLifeOverrideRepository: Sendable {
+    func override(for productID: ProductID) async throws -> ShelfLifeOverride?
+    func override(for lotID: LotID) async throws -> ShelfLifeOverride?
+    /// Replaces the product's override. Throws `RepositoryError.productNotFound` if the product doesn't exist.
+    func save(_ override: ShelfLifeOverride, for productID: ProductID) async throws
+    /// Replaces the lot's override. Throws `RepositoryError.lotNotFound` if the lot doesn't exist.
+    func save(_ override: ShelfLifeOverride, for lotID: LotID) async throws
+    /// Removes the product's override. Does nothing if there isn't one.
+    func clearOverride(for productID: ProductID) async throws
+    /// Removes the lot's override. Does nothing if there isn't one.
+    func clearOverride(for lotID: LotID) async throws
+}
+
 public protocol KitRepository: Sendable {
     /// Kits whose home is `siteID`.
     func list(siteID: SiteID) async throws -> [Kit]
@@ -86,6 +103,10 @@ public struct RunwayInputs: Hashable, Sendable {
     public var products: [Product]
     public var locations: [Location]
     public var kits: [Kit]
+    /// Overrides on the products in `products`; a product with none is absent.
+    public var productShelfLifeOverrides: [ProductID: ShelfLifeOverride]
+    /// Overrides on the lots in `lots`; a lot with none is absent.
+    public var lotShelfLifeOverrides: [LotID: ShelfLifeOverride]
 
     public init(
         site: Site,
@@ -93,7 +114,9 @@ public struct RunwayInputs: Hashable, Sendable {
         lots: [Lot],
         products: [Product],
         locations: [Location],
-        kits: [Kit]
+        kits: [Kit],
+        productShelfLifeOverrides: [ProductID: ShelfLifeOverride] = [:],
+        lotShelfLifeOverrides: [LotID: ShelfLifeOverride] = [:]
     ) {
         self.site = site
         self.occupants = occupants
@@ -101,6 +124,8 @@ public struct RunwayInputs: Hashable, Sendable {
         self.products = products
         self.locations = locations
         self.kits = kits
+        self.productShelfLifeOverrides = productShelfLifeOverrides
+        self.lotShelfLifeOverrides = lotShelfLifeOverrides
     }
 }
 
@@ -131,6 +156,8 @@ extension RunwayCalculator {
             products: inputs.products,
             locations: inputs.locations,
             kits: inputs.kits,
+            productShelfLifeOverrides: inputs.productShelfLifeOverrides,
+            lotShelfLifeOverrides: inputs.lotShelfLifeOverrides,
             profiles: profiles,
             on: today,
             targets: targets

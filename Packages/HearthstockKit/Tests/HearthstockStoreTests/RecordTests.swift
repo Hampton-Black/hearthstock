@@ -88,6 +88,37 @@ private let t1 = Date(timeIntervalSince1970: 1_769_904_000.5)  // 2026-02-01T00:
         #expect(back == original)
     }
 
+    // MARK: Shelf-life overrides
+
+    @Test(arguments: [
+        ShelfLifeOverride(),
+        ShelfLifeOverride(extensionMonths: 6),
+        ShelfLifeOverride(extensionMonths: 0, packagedLifeMonths: 0, rotationMonths: 0),
+        ShelfLifeOverride(
+            dateType: ShelfLifeDateType.none, extensionMonths: 1, packagedLifeMonths: 120, rotationMonths: 18),
+    ] + ShelfLifeDateType.allCases.map { ShelfLifeOverride(dateType: $0) })
+    func productOverrideRoundTrips(original: ShelfLifeOverride) throws {
+        let db = try seeded(location(in: site))
+        let record = ShelfLifeOverrideRecord(original, productID: product.id)
+        let back = try roundTrip(record, in: db, key: record.id)
+        #expect(back.productId == product.id.stored)
+        #expect(back.lotId == nil)
+        #expect(try back.toCore() == original)
+    }
+
+    @Test func lotOverrideRoundTrips() throws {
+        let place = location(in: site)
+        let db = try seeded(place)
+        let lot = Lot(productID: product.id, quantity: 1, acquiredDate: date(2026, 1, 1), locationID: place.id)
+        try db.writer.write { try LotRecord(lot, siteID: site.id).insert($0, clock: .system) }
+        let original = ShelfLifeOverride(dateType: .useBy, extensionMonths: 2)
+        let record = ShelfLifeOverrideRecord(original, lotID: lot.id)
+        let back = try roundTrip(record, in: db, key: record.id)
+        #expect(back.lotId == lot.id.stored)
+        #expect(back.productId == nil)
+        #expect(try back.toCore() == original)
+    }
+
     // MARK: Location and kit
 
     @Test(arguments: [nil] + ClimateClass.allCases.map(Optional.some))
@@ -101,6 +132,14 @@ private let t1 = Date(timeIntervalSince1970: 1_769_904_000.5)  // 2026-02-01T00:
     @Test(arguments: [nil] + Humidity.allCases.map(Optional.some))
     func locationRoundTripsEveryHumidity(humidity: Humidity?) throws {
         let original = Location(siteID: site.id, name: "Cellar", humidity: humidity)
+        let db = try seeded(self.location(in: site))
+        let back = try roundTrip(LocationRecord(original), in: db, key: original.id.stored).toCore()
+        #expect(back == original)
+    }
+
+    @Test(arguments: [nil, 0.33, 0.5, 1.0, 1.25, 2.0])
+    func locationRoundTripsItsMultiplierOverride(multiplier: Double?) throws {
+        let original = Location(siteID: site.id, name: "Shed", climateClass: .hot, climateMultiplierOverride: multiplier)
         let db = try seeded(self.location(in: site))
         let back = try roundTrip(LocationRecord(original), in: db, key: original.id.stored).toCore()
         #expect(back == original)
@@ -371,19 +410,26 @@ private let t1 = Date(timeIntervalSince1970: 1_769_904_000.5)  // 2026-02-01T00:
         #expect(try back.toCore() == cleared)
     }
 
-    @Test func updateLeavesColumnsTheRecordDoesNotMapUntouched() throws {
+    @Test func updateWritesAndClearsTheClimateMultiplierOverride() throws {
         let db = try database()
-        let location = Location(siteID: site.id, name: "Garage")
+        let location = Location(siteID: site.id, name: "Garage", climateMultiplierOverride: 0.6)
         try db.writer.write { db in
             try SiteRecord(site).insert(db, clock: .fixed(t0))
             try LocationRecord(location).insert(db, clock: .fixed(t0))
-            try db.execute(sql: "UPDATE location SET climateMultiplierOverride = 0.6")
         }
-        try db.writer.write { try LocationRecord(location).update($0, clock: .fixed(t1)) }
-        let multiplier = try db.writer.read {
-            try Double.fetchOne($0, sql: "SELECT climateMultiplierOverride FROM location")
+        func stored() throws -> Double? {
+            try db.writer.read { try Double.fetchOne($0, sql: "SELECT climateMultiplierOverride FROM location") }
         }
-        #expect(multiplier == 0.6)
+        #expect(try stored() == 0.6)
+
+        var changed = location
+        changed.climateMultiplierOverride = 0.75
+        try db.writer.write { try LocationRecord(changed).update($0, clock: .fixed(t1)) }
+        #expect(try stored() == 0.75)
+
+        changed.climateMultiplierOverride = nil
+        try db.writer.write { try LocationRecord(changed).update($0, clock: .fixed(t1)) }
+        #expect(try stored() == nil)
     }
 
     @Test func timestampsRoundToTheNearestMillisecond() {
@@ -431,6 +477,14 @@ private let t1 = Date(timeIntervalSince1970: 1_769_904_000.5)  // 2026-02-01T00:
             siteID: SiteID())
         record.acquiredDate = "2026-02-30"
         #expect(throws: RecordMappingError(table: "lot", column: "acquiredDate", value: "2026-02-30")) {
+            try record.toCore()
+        }
+    }
+
+    @Test func unknownOverrideDateTypeThrows() throws {
+        var record = ShelfLifeOverrideRecord(ShelfLifeOverride(), productID: ProductID())
+        record.dateType = "sellBy"
+        #expect(throws: RecordMappingError(table: "shelf_life_override", column: "dateType", value: "sellBy")) {
             try record.toCore()
         }
     }

@@ -231,4 +231,56 @@ import Testing
         #expect(humid.usableBy == dry.usableBy)
         #expect(humid.state == dry.state)
     }
+
+    // MARK: Window multiplier override
+
+    @Test func windowMultiplierReplacesTheClimateClassMultiplier() {
+        // canned_low_acid printed 2026-01-01, 730 days: ×0.5 → usable through 2027-01-01, exactly like `.hot`.
+        let lot = Self.lot(printed: "2026-01-01")
+        let overridden = ShelfLifeEvaluator.evaluate(
+            lot, profile: Self.profile("canned_low_acid"), climate: .climateControlled, windowMultiplier: 0.5,
+            on: Self.date("2026-06-01"))
+        let hot = Self.evaluate(lot, "canned_low_acid", climate: .hot, on: "2026-06-01")
+        #expect(overridden == hot)
+        #expect(overridden.usableBy == Self.date("2027-01-01"))
+    }
+
+    @Test func nilWindowMultiplierKeepsTheClassMultiplier() {
+        let lot = Self.lot(printed: "2026-01-01")
+        let result = ShelfLifeEvaluator.evaluate(
+            lot, profile: Self.profile("canned_low_acid"), climate: .hot, windowMultiplier: nil,
+            on: Self.date("2026-06-01"))
+        #expect(result == Self.evaluate(lot, "canned_low_acid", climate: .hot, on: "2026-06-01"))
+    }
+
+    /// 730 days × 0.5 = 365 → usable through 2027-01-01; 730 × 0.49 = 357.7 → 357 days → through 2026-12-24.
+    @Test(arguments: [
+        (0.5, "2027-01-01", LotState.inspect),  // last usable day under ×0.5
+        (0.5, "2027-01-02", .expired),
+        (0.49, "2026-12-24", .inspect),  // the nudge moves the boundary a week earlier
+        (0.49, "2026-12-25", .expired),
+    ])
+    func multiplierMovesTheBoundaryDay(multiplier: Double, today: String, expected: LotState) {
+        let result = ShelfLifeEvaluator.evaluate(
+            Self.lot(printed: "2026-01-01"), profile: Self.profile("canned_low_acid"), climate: .climateControlled,
+            windowMultiplier: multiplier, on: Self.date(today))
+        #expect(result.state == expected)
+    }
+
+    @Test func windowMultiplierOnColdStorageStillFlagsPowerDependent() {
+        let result = ShelfLifeEvaluator.evaluate(
+            Self.lot(printed: "2026-01-01"), profile: Self.profile("canned_low_acid"), climate: .refrigerated,
+            windowMultiplier: 0.5, on: Self.date("2026-06-01"))
+        #expect(result.usableBy == Self.date("2027-01-01"))
+        #expect(result.flags == [.powerDependent])
+    }
+
+    @Test func windowMultiplierDoesNotScaleRotationWindows() {
+        // Rotation months run from the acquired date unscaled, as without an override.
+        let lot = Self.lot(acquired: "2026-01-01")
+        let result = ShelfLifeEvaluator.evaluate(
+            lot, profile: Self.profile("stored_tap_water"), climate: .climateControlled, windowMultiplier: 0.5,
+            on: Self.date("2026-06-01"))
+        #expect(result.usableBy == Self.date("2026-07-01"))
+    }
 }

@@ -42,6 +42,9 @@ public struct Location: Hashable, Sendable, Codable, Identifiable {
     public var name: String
     public var parentID: LocationID?
     public var climateClass: ClimateClass?
+    /// Replaces the window multiplier of this location's climate class (or the inherited one). Positive; nil uses
+    /// the class default.
+    public var climateMultiplierOverride: Double?
     public var humidity: Humidity?
     /// Set when this location is a kit (a go-bag, a car kit).
     public var kitID: KitID?
@@ -52,6 +55,7 @@ public struct Location: Hashable, Sendable, Codable, Identifiable {
         name: String,
         parentID: LocationID? = nil,
         climateClass: ClimateClass? = nil,
+        climateMultiplierOverride: Double? = nil,
         humidity: Humidity? = nil,
         kitID: KitID? = nil
     ) {
@@ -60,6 +64,7 @@ public struct Location: Hashable, Sendable, Codable, Identifiable {
         self.name = name
         self.parentID = parentID
         self.climateClass = climateClass
+        self.climateMultiplierOverride = climateMultiplierOverride
         self.humidity = humidity
         self.kitID = kitID
     }

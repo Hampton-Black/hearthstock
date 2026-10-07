@@ -22,6 +22,7 @@ private struct Harness {
     let products: GRDBProductRepository
     let lots: GRDBLotRepository
     let kits: GRDBKitRepository
+    let overrides: GRDBShelfLifeOverrideRepository
     let inputs: GRDBRunwayInputsLoader
 
     init() throws {
@@ -35,6 +36,7 @@ private struct Harness {
         products = GRDBProductRepository(database: db, clock: clock)
         lots = GRDBLotRepository(database: db, clock: clock)
         kits = GRDBKitRepository(database: db, clock: clock)
+        overrides = GRDBShelfLifeOverrideRepository(database: db, clock: clock)
         inputs = GRDBRunwayInputsLoader(database: db)
     }
 
@@ -444,6 +446,136 @@ private struct Harness {
     }
 }
 
+@Suite struct ShelfLifeOverrideRepositoryTests {
+    @Test func productOverrideSavesReplacesAndClears() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        #expect(try await h.overrides.override(for: seeded.rice.id) == nil)
+
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        #expect(try await h.overrides.override(for: seeded.rice.id) == ShelfLifeOverride(extensionMonths: 6))
+
+        // Replaces, not merges: the new override doesn't carry the old extension.
+        try await h.overrides.save(ShelfLifeOverride(dateType: .useBy, rotationMonths: 3), for: seeded.rice.id)
+        #expect(
+            try await h.overrides.override(for: seeded.rice.id)
+                == ShelfLifeOverride(dateType: .useBy, rotationMonths: 3))
+        #expect(try await rowCount(h) == 1)
+
+        try await h.overrides.clearOverride(for: seeded.rice.id)
+        #expect(try await h.overrides.override(for: seeded.rice.id) == nil)
+        #expect(try await rowCount(h) == 0)
+    }
+
+    @Test func lotOverrideSavesReplacesAndClears() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 1), for: seeded.lot.id)
+        #expect(try await h.overrides.override(for: seeded.lot.id) == ShelfLifeOverride(extensionMonths: 1))
+        try await h.overrides.save(ShelfLifeOverride(packagedLifeMonths: 12), for: seeded.lot.id)
+        #expect(try await h.overrides.override(for: seeded.lot.id) == ShelfLifeOverride(packagedLifeMonths: 12))
+        #expect(try await rowCount(h) == 1)
+
+        try await h.overrides.clearOverride(for: seeded.lot.id)
+        #expect(try await h.overrides.override(for: seeded.lot.id) == nil)
+    }
+
+    @Test func productAndLotOverridesAreIndependent() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 1), for: seeded.lot.id)
+        try await h.overrides.clearOverride(for: seeded.rice.id)
+        #expect(try await h.overrides.override(for: seeded.rice.id) == nil)
+        #expect(try await h.overrides.override(for: seeded.lot.id) == ShelfLifeOverride(extensionMonths: 1))
+    }
+
+    @Test func savingAnEmptyOverrideClearsIt() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        try await h.overrides.save(ShelfLifeOverride(), for: seeded.rice.id)
+        #expect(try await h.overrides.override(for: seeded.rice.id) == nil)
+        #expect(try await rowCount(h) == 0)
+        // Nothing to clear is fine too.
+        try await h.overrides.save(ShelfLifeOverride(), for: seeded.lot.id)
+        #expect(try await rowCount(h) == 0)
+    }
+
+    @Test func clearingWhatDoesNotExistDoesNothing() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.clearOverride(for: seeded.rice.id)
+        try await h.overrides.clearOverride(for: seeded.lot.id)
+        try await h.overrides.clearOverride(for: ProductID())
+        try await h.overrides.clearOverride(for: LotID())
+    }
+
+    @Test func zeroMonthsIsStoredAsAValue() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 0), for: seeded.rice.id)
+        #expect(try await h.overrides.override(for: seeded.rice.id) == ShelfLifeOverride(extensionMonths: 0))
+    }
+
+    @Test func savingForAMissingProductOrLotThrowsTypedError() async throws {
+        let h = try Harness()
+        let productID = ProductID()
+        await #expect(throws: RepositoryError.productNotFound(productID)) {
+            try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: productID)
+        }
+        let lotID = LotID()
+        await #expect(throws: RepositoryError.lotNotFound(lotID)) {
+            try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: lotID)
+        }
+        #expect(try await rowCount(h) == 0)
+    }
+
+    @Test func negativeMonthsAreRejectedByTheSchema() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        await #expect(throws: DatabaseError.self) {
+            try await h.overrides.save(ShelfLifeOverride(extensionMonths: -1), for: seeded.rice.id)
+        }
+    }
+
+    @Test func updateKeepsCreatedAtAndMovesUpdatedAt() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        let first = try await timestamps(h)
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 7), for: seeded.rice.id)
+        let second = try await timestamps(h)
+        #expect(second.created == first.created)
+        #expect(second.updated > first.updated)
+    }
+
+    @Test func overridesGoWhenTheirLotOrProductDoes() async throws {
+        // Lots and products can't be deleted through a repository yet, so go through SQL as the schema test does.
+        let h = try Harness()
+        let seeded = try await h.seed()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 1), for: seeded.lot.id)
+        try await h.db.writer.write { try $0.execute(sql: "DELETE FROM lot") }
+        #expect(try await rowCount(h) == 1)
+        try await h.db.writer.write { try $0.execute(sql: "DELETE FROM product") }
+        #expect(try await rowCount(h) == 0)
+    }
+
+    private func rowCount(_ h: Harness) async throws -> Int {
+        try await h.db.writer.read { try Int.fetchOne($0, sql: "SELECT COUNT(*) FROM shelf_life_override") } ?? -1
+    }
+
+    private func timestamps(_ h: Harness) async throws -> (created: String, updated: String) {
+        try await h.db.writer.read { db in
+            (
+                try #require(try String.fetchOne(db, sql: "SELECT createdAt FROM shelf_life_override")),
+                try #require(try String.fetchOne(db, sql: "SELECT updatedAt FROM shelf_life_override"))
+            )
+        }
+    }
+}
+
 @Suite struct RunwayInputsLoaderTests {
     @Test func loadsEverythingForOneSiteAndNothingFromAnother() async throws {
         let h = try Harness()
@@ -474,6 +606,102 @@ private struct Harness {
         #expect(inputs.products == [seeded.rice])
         #expect(Set(inputs.locations.map(\.name)) == ["Pantry", "Go-bag"])
         #expect(inputs.kits == [kit])
+    }
+
+    @Test func loadsOverridesForTheSitesLotsAndAllProducts() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        let beans = Harness.product("Beans")
+        try await h.products.save(beans)
+        let archived = Harness.lot(beans, in: seeded.pantry)
+        try await h.lots.save(archived)
+        try await h.lots.archive(archived.id)
+
+        let cabin = Site(name: "Cabin")
+        try await h.sites.save(cabin)
+        let loft = Location(siteID: cabin.id, name: "Loft")
+        try await h.locations.save(loft)
+        let cabinLot = Harness.lot(seeded.rice, in: loft)
+        try await h.lots.save(cabinLot)
+
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        try await h.overrides.save(ShelfLifeOverride(rotationMonths: 3), for: beans.id)
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 1), for: seeded.lot.id)
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 2), for: archived.id)
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 3), for: cabinLot.id)
+
+        let inputs = try await h.inputs.load(siteID: seeded.site.id)
+        #expect(inputs.productShelfLifeOverrides == [
+            seeded.rice.id: ShelfLifeOverride(extensionMonths: 6),
+            beans.id: ShelfLifeOverride(rotationMonths: 3),
+        ])
+        #expect(inputs.lotShelfLifeOverrides == [seeded.lot.id: ShelfLifeOverride(extensionMonths: 1)])
+    }
+
+    @Test func noOverridesLoadsEmptyMaps() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        let inputs = try await h.inputs.load(siteID: seeded.site.id)
+        #expect(inputs.productShelfLifeOverrides.isEmpty)
+        #expect(inputs.lotShelfLifeOverrides.isEmpty)
+    }
+
+    @Test func loadedLocationCarriesItsMultiplierOverride() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        var pantry = seeded.pantry
+        pantry.climateMultiplierOverride = 0.6
+        try await h.locations.save(pantry)
+        #expect(try await h.locations.list(siteID: seeded.site.id) == [pantry])
+        #expect(try await h.inputs.load(siteID: seeded.site.id).locations == [pantry])
+    }
+
+    /// Rice printed 2024-10-06, climate-controlled: 730 days, so 2026-10-06 is its last usable day. Overrides
+    /// saved through the repositories move it across the line, read back through the loader.
+    @Test func runwayFromTheDatabaseHonoursEveryOverrideLevel() async throws {
+        let h = try Harness()
+        let site = try await h.sites.ensureDefaultSite()
+        try await h.people.save(Person(siteID: site.id, name: "Ada", kcalPerDay: 2000))
+        var pantry = Location(siteID: site.id, name: "Pantry", climateClass: .climateControlled)
+        try await h.locations.save(pantry)
+        let cans = Product(
+            name: "Beans", category: .food, role: .supply, unitKind: .count, kcalPerBaseUnit: 100,
+            shelfLifeProfileKey: "canned_low_acid")
+        try await h.products.save(cans)
+        let lot = Lot(
+            productID: cans.id, quantity: 10, acquiredDate: date(2024, 1, 1), printedDate: date(2024, 10, 6),
+            locationID: pantry.id)
+        try await h.lots.save(lot)
+
+        let profiles = try ShelfLifeProfileTable.bundledDefaults()
+        let today = date(2026, 10, 6)
+        func highAmount() async throws -> Double {
+            let inputs = try await h.inputs.load(siteID: site.id)
+            let runway = RunwayCalculator.runway(for: inputs, profiles: profiles, on: today)
+            #expect(runway.problems.isEmpty)
+            return runway.food.highAmount
+        }
+
+        #expect(try await highAmount() == 1000)  // inspect, last usable day
+
+        pantry.climateMultiplierOverride = 0.99
+        try await h.locations.save(pantry)
+        #expect(try await highAmount() == 0)
+
+        pantry.climateMultiplierOverride = nil
+        try await h.locations.save(pantry)
+        #expect(try await highAmount() == 1000)
+
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 12), for: cans.id)
+        #expect(try await highAmount() == 0)
+
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 36), for: lot.id)
+        #expect(try await highAmount() == 1000)
+
+        try await h.overrides.clearOverride(for: lot.id)
+        #expect(try await highAmount() == 0)
+        try await h.overrides.clearOverride(for: cans.id)
+        #expect(try await highAmount() == 1000)
     }
 
     @Test func missingSiteThrowsTypedError() async throws {
@@ -543,6 +771,48 @@ private struct Subscription<Element: Sendable> {
 
         try await h.lots.archive(extra.id)
         #expect(try await inputs.next().lots == [seeded.lot])
+    }
+
+    @Test func overrideAndMultiplierWritesEmitNewRunwayInputs() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        var inputs = Subscription(h.inputs.observeRunwayInputs(siteID: seeded.site.id))
+        _ = try await inputs.next()
+
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 6), for: seeded.rice.id)
+        #expect(try await inputs.next().productShelfLifeOverrides[seeded.rice.id]?.extensionMonths == 6)
+
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 1), for: seeded.lot.id)
+        #expect(try await inputs.next().lotShelfLifeOverrides[seeded.lot.id]?.extensionMonths == 1)
+
+        var pantry = seeded.pantry
+        pantry.climateMultiplierOverride = 0.5
+        try await h.locations.save(pantry)
+        #expect(try await inputs.next().locations == [pantry])
+
+        try await h.overrides.clearOverride(for: seeded.lot.id)
+        #expect(try await inputs.next().lotShelfLifeOverrides.isEmpty)
+    }
+
+    @Test func overridesOnAnotherSitesLotsDoNotChangeRunwayInputs() async throws {
+        let h = try Harness()
+        let seeded = try await h.seed()
+        let cabin = Site(name: "Cabin")
+        try await h.sites.save(cabin)
+        let loft = Location(siteID: cabin.id, name: "Loft")
+        try await h.locations.save(loft)
+        let cabinLot = Harness.lot(seeded.rice, in: loft)
+        try await h.lots.save(cabinLot)
+
+        var inputs = Subscription(h.inputs.observeRunwayInputs(siteID: seeded.site.id))
+        _ = try await inputs.next()
+        try await h.overrides.save(ShelfLifeOverride(extensionMonths: 1), for: cabinLot.id)
+        // The next emission must come from this later write, not the cabin's override.
+        let marker = Person(siteID: seeded.site.id, name: "Ada")
+        try await h.people.save(marker)
+        let next = try await inputs.next()
+        #expect(next.occupants == [marker])
+        #expect(next.lotShelfLifeOverrides.isEmpty)
     }
 
     @Test func writesToAnotherSiteDoNotChangeRunwayInputs() async throws {
