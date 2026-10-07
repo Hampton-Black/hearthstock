@@ -12,55 +12,11 @@ import Testing
     private let db: AppDatabase
     private let loader: GRDBRunwayInputsLoader
 
-    /// The fixture lives with HearthstockCoreTests and is read from the source tree, so there is one copy.
-    /// SwiftPM can't share one resource folder between test targets, and these tests run on the Mac.
-    private static let fixtureURL = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .appending(path: "HearthstockCoreTests/Fixtures/sample-pantry.json", directoryHint: .notDirectory)
-
     init() async throws {
-        fixture = try JSONDecoder().decode(PantryFixture.self, from: Data(contentsOf: Self.fixtureURL))
+        fixture = try PantryFixture.load()
         db = try AppDatabase.inMemory()
         loader = GRDBRunwayInputsLoader(database: db)
-        try await populate()
-    }
-
-    /// Everything goes in through the repository protocols, parents before children.
-    private func populate() async throws {
-        let sites = GRDBSiteRepository(database: db)
-        let people = GRDBPersonRepository(database: db)
-        let locations = GRDBLocationRepository(database: db)
-        let products = GRDBProductRepository(database: db)
-        let lots = GRDBLotRepository(database: db)
-        let kits = GRDBKitRepository(database: db)
-
-        try await sites.save(fixture.site)
-        for person in fixture.occupants { try await people.save(person) }
-        for product in fixture.products { try await products.save(product) }
-        // A location and its kit refer to each other. Locations go in without their kit link; saving the
-        // kit sets it, as the app does.
-        for location in Self.parentsFirst(fixture.locations) {
-            var unlinked = location
-            unlinked.kitID = nil
-            try await locations.save(unlinked)
-        }
-        for kit in fixture.kits { try await kits.save(kit) }
-        for lot in fixture.lots { try await lots.save(lot) }
-    }
-
-    private static func parentsFirst(_ locations: [Location]) -> [Location] {
-        var ordered: [Location] = []
-        var remaining = locations
-        var placed: Set<LocationID> = []
-        while !remaining.isEmpty {
-            let ready = remaining.filter { $0.parentID.map(placed.contains) ?? true }
-            precondition(!ready.isEmpty, "fixture locations contain a cycle or a missing parent")
-            ordered += ready
-            placed.formUnion(ready.map(\.id))
-            remaining.removeAll { placed.contains($0.id) }
-        }
-        return ordered
+        try await fixture.populate(db)
     }
 
     @Test func loadedInputsMatchTheFixture() async throws {
@@ -118,33 +74,4 @@ import Testing
         #expect(isApproximately(runway.untreatedNonPotableGal, expected.untreatedNonPotableGal, tolerance: 1e-6))
         #expect(runway.lotsMissingNutrition == expected.lotsMissingNutrition)
     }
-}
-
-/// `Fixtures/sample-pantry.json`, shared with HearthstockCoreTests: one site's world plus the hand-computed
-/// results. Mirrors the decoder in `RunwayCalculatorTests`.
-private struct PantryFixture: Decodable {
-    struct Expected: Decodable {
-        var foodKcalLow: Double
-        var foodKcalHigh: Double
-        var waterGalLow: Double
-        var waterGalHigh: Double
-        var foodDaysLow: Double
-        var foodDaysHigh: Double
-        var waterDaysLow: Double
-        var waterDaysHigh: Double
-        var limitingCategory: String
-        var nextTargetDays: Double
-        var nextTargetShortfall: Double
-        var untreatedNonPotableGal: Double
-        var lotsMissingNutrition: [LotID]
-    }
-
-    var today: CalendarDate
-    var site: Site
-    var occupants: [Person]
-    var locations: [Location]
-    var kits: [Kit]
-    var products: [Product]
-    var lots: [Lot]
-    var expected: Expected
 }
