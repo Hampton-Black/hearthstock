@@ -3,6 +3,7 @@
 Personal, local-first iPhone app for tracking emergency-preparedness supplies (food, water, power, gear, go-bags) and estimating how long they last ("runway") per site.
 
 - **Spec (source of truth for behavior):** `docs/spec.md`
+- **Design (source of truth for look and feel):** `docs/design.md` (tokens, text styles, SF Symbols, custom components, screen map). If the design and the spec disagree on behavior, the spec wins.
 - **Work tracking:** Beads (`bd`). Each slice is an epic; each task is a child bead with acceptance criteria in its description. See "Task tracking" below.
 - The app is **Hearthstock**. Modules: `HearthstockKit` (Swift package) containing `HearthstockCore` and `HearthstockStore`. The name may still change, so keep it out of user-facing strings beyond the app display name.
 
@@ -31,7 +32,8 @@ If the spec and a bead disagree, stop and ask. If the spec is silent, pick the s
 │   ├── Tests/HearthstockCoreTests/
 │   └── Tests/HearthstockStoreTests/
 └── docs/
-    └── spec.md
+    ├── spec.md
+    └── design.md
 .beads/                          # Beads database (managed by bd — never edit by hand)
 ```
 

@@ -2,7 +2,7 @@
 
 **Goal:** Hampton can enter his real pantry by hand on the phone and read the answer back. After this slice the app has a Dashboard that shows food, water and effective runway as a low–high range with the top of the Focus next list, an Inventory that lists every lot with its shelf-life state and lets him use up, adjust, edit or delete it, an Add flow that creates a lot (and a product, if new) quickly with any expiry date past or future, and Settings for the household, locations and backup. Barcode scanning comes next; this slice proves the screens, the view-model pattern and the entry fields against real shelves first.
 
-Read first: CLAUDE.md (Architecture rules, Working style), docs/spec.md → the shelf-life state table (including **Use soon**), **Runway dashboard**, **Screens and flows** and **Data model** (Units, Consumption, Shelf life), and the Slice 1–2 code: `RunwayCalculator`, `ShelfLifeEvaluator`, `ShelfLifeProfileResolver`, `resolvedClimate`, the repository protocols in `Repositories.swift`, `GRDBBackup`, and the app target (`AppServices`, `RootView`, `ContentView`, `SamplePantry`).
+Read first: CLAUDE.md (Architecture rules, Working style), docs/design.md (color tokens, text styles, SF Symbols, components, and the "Slice 3: manual entry" row of the design canvas for this slice's screens), docs/spec.md → the shelf-life state table (including **Use soon**), **Runway dashboard**, **Screens and flows** and **Data model** (Units, Consumption, Shelf life), and the Slice 1–2 code: `RunwayCalculator`, `ShelfLifeEvaluator`, `ShelfLifeProfileResolver`, `resolvedClimate`, the repository protocols in `Repositories.swift`, `GRDBBackup`, and the app target (`AppServices`, `RootView`, `ContentView`, `SamplePantry`).
 
 **Slices 1 and 2 are the ground truth for type names and shapes.** Where this file names a type or field differently from the code, follow the code and mention the difference in your plan. If a Core or Store type needs to change, list it in the plan before touching it.
 
@@ -85,8 +85,9 @@ Small additions the screens need. Each one is listed in the plan before it's mad
 - [ ] Shelf-life profiles gain a display `name` in `shelf-life-defaults.json` and `ShelfLifeProfile` (Decision 9). Loading still fails clearly on a profile without one.
 - [ ] Restore (Decision 4): a Store operation that erases every table and imports a backup document in one transaction, so a bad file leaves the old data in place. `GRDBBackup.import` keeps its empty-database rule.
 - [ ] `GRDBBackup` joins `AppServices` behind a small protocol in Core, so Settings doesn't see GRDB.
+- [ ] **New product and its first lot in one transaction.** A repository call (protocol in Core, implementation in Store) that inserts a new product and a lot of it together; if either insert fails, neither is saved. The Add flow (Task 8) uses it whenever the product is new, and Slice 4's scanner reuses it unchanged.
 
-**Tests:** the notice window round-trips through the site repository and the backup; a version 1 backup imports with 30 days; delete a lot with an override and both are gone; delete a kit and its location can then be deleted; every bundled profile has a non-empty name; restore over a populated database leaves exactly the file's contents; a restore that fails partway leaves the original data intact; export → restore → export matches apart from `exportedAt`.
+**Tests:** the notice window round-trips through the site repository and the backup; a version 1 backup imports with 30 days; delete a lot with an override and both are gone; delete a kit and its location can then be deleted; every bundled profile has a non-empty name; restore over a populated database leaves exactly the file's contents; a restore that fails partway leaves the original data intact; export → restore → export matches apart from `exportedAt`; adding a new product with its lot writes both, and a lot that fails validation leaves no product behind.
 
 **Done when:** every write the screens need exists as a repository call.
 
@@ -115,6 +116,7 @@ Small additions the screens need. Each one is listed in the plan before it's mad
 - [ ] Unit kind can't change once the product has lots, since their quantities are stored in its base unit.
 - [ ] A product picker: search existing products by name, most recently used first when the search is empty, with "New product" always one tap away.
 - [ ] Editing a product says it affects every lot of that product.
+- [ ] Opened from the Add flow for a new product, the form's Save hands the draft back to the Add sheet instead of writing it (Task 8 saves product and lot together). Opened to edit an existing product, Save writes it directly.
 
 **Done when:** a product can be created inline from the Add flow and edited later from a lot.
 
@@ -123,6 +125,7 @@ Small additions the screens need. Each one is listed in the plan before it's mad
 The spec's goal is a bulk item or an old can entered in under 15 seconds.
 
 - [ ] One sheet: product (picker or new), quantity with a unit picker limited to the product's unit kind and an optional "× packs" multiplier (24 × 0.5 L → 3.17 gal), printed date (any date, past or future, or "No expiry"), acquired date (defaults to today, editable), packaging, location (last-used preselected, Decision 8), opened, notes.
+- [ ] **Product draft, one save.** When the product is new, the sheet holds a product draft (a Core value type with a product's fields and no ID) instead of saving the product first. Save writes the product and the lot through the Task 4 transaction; Cancel discards the draft, so no orphan products are left behind. Slice 4's scanner fills the same draft from a barcode lookup, so this save path doesn't change. An existing product goes straight to a plain lot save.
 - [ ] Conversion to the base unit happens on save with `Quantity.inBaseUnit()`; the sheet shows the stored amount ("= 3.17 gal") before saving.
 - [ ] Save and add another keeps product-independent choices (location, acquired date) for the next entry.
 - [ ] After saving, the new lot's state is visible on the confirmation, so a back-filled old can shows Caution or Expired right away.

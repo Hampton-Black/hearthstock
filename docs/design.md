@@ -35,7 +35,16 @@ extension Color {
 
 private extension Color {
     init(light: UInt32, dark: UInt32) {
-        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+        self.init(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: dark) : UIColor(rgb: light) })
+    }
+}
+
+private extension UIColor {
+    convenience init(rgb: UInt32) {
+        self.init(red: CGFloat((rgb >> 16) & 0xFF) / 255,
+                  green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                  blue: CGFloat(rgb & 0xFF) / 255,
+                  alpha: 1)
     }
 }
 ```
@@ -175,9 +184,31 @@ Red appears only for Expired and for a runway below 3 days. Being under the targ
 | First run · household | `OnboardingView` | Shown once, before the dashboard |
 | Item states | Reference only | Badge and state rules |
 
+### Slice 3 screens
+
+The "Slice 3: manual entry" row of the canvas holds the screens this slice builds. Where it and the earlier rows differ, the Slice 3 row wins for this slice: three tabs, a "+" toolbar button instead of Scan, and manual entry first.
+
+| Canvas artboard | Slice 3 task | Notes |
+| --- | --- | --- |
+| S3 · Dashboard (3 tabs) | Task 10 | Cards show amount on hand and daily need; non-potable water is a chip beside the water figure; "Plan around N days" line; a "products missing calories" Focus next item |
+| S3 · Dashboard, no household | Task 10 | Problem state linking to Settings; categories show amounts with "— days" |
+| S3 · Inventory, swipe + filter | Task 9 | Trailing swipe actions Use and Adjust; flag icons (No date, Not potable); a category filter chip with a clear button after a Dashboard drill-in |
+| S3 · Use / Adjust sheet | Task 9 | One sheet, two modes (tweak). Units limited to the product's kind; over-using shows the available amount and archives at zero |
+| S3 · Lot detail | Task 9 | "Why it's Caution" section (printed date, profile, climate, packaging, usable-by, runway effect); Use and Adjust buttons; Mark as used up; Delete with an explanation |
+| S3 · Add lot, manual | Task 8 | Product row opens the picker; amount + unit + "× packs" with the stored amount ("24 × 0.5 L = 3.17 gal"); location preselects the last used; Save and Save + add another |
+| S3 · Add lot, saved | Task 8 | Shows the new lot's state, why, and its runway effect (tweak: old beans, rice in a hot garage, expired soup) |
+| S3 · Product picker | Task 7 | Search; recent products when empty; "New product" always first, prefilled with the search text |
+| S3 · Product form | Task 7 | Category, unit kind (locked once lots exist), calories per base unit with the per-package helper, potable water with a Not potable switch, shelf-life profile by name, typed barcode. Edit mode warns that changes apply to every lot |
+| S3 · Settings | Task 6, 11 | Site name, Use soon notice stepper, household, location tree with climate tags, backup, DEBUG-only developer section |
+| S3 · Edit location | Task 6 | Parent ("Inside"), climate with "Inherit from parent" and each class's multiplier, humidity, kit switches, and the blocked-delete message |
+| S3 · Restore backup | Task 11 | File summary, what will be replaced, "Export current data first", red destructive action; unreadable-file state (tweak) |
+
+Red on the Restore and Delete buttons follows the iOS convention for destructive actions; it's the one use of red outside Expired and the 3-day shortfall.
+
 ## 9. Open decisions
 
-- The designs show four tabs; the spec lists five (with Tasks). Tasks is out of scope for v1 screens.
-- Target choices in the designs are 3 / 7 / 14 / 30 days; the spec's defaults are 3 / 14 / 30.
+- **Tabs (settled for Slice 3):** Slice 3 ships three tabs, Dashboard, Inventory and Settings (`docs/slice-3.md`, Decision 2). Kits and Tasks tabs arrive with the slices that give them content, so the four-tab bar in the designs is the later state.
+- **Targets (deferred):** the onboarding picker in the designs offers 3 / 7 / 14 / 30 days; the spec's defaults are 3 / 14 / 30. Editing targets and onboarding are out of scope for Slice 3, so this waits for that slice.
+- **Scanning (deferred):** the scan-first Add flow, pantry walk and barcode edge cases are Slice 4. Slice 3's Add flow opens on manual entry.
 - The date picker preview assumes canned goods stay usable 24 months past best-by (the real value comes from the shelf-life profile and location climate).
 - Items saved with no printed date count as Good.

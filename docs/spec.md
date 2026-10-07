@@ -153,6 +153,14 @@ Five tabs cover v1: Dashboard, Inventory, Kits, Tasks, Settings. Adding stock is
 4. Acquired date defaults to today but is editable, which matters when back-filling an existing pantry.
 5. Pick a location; the last-used one is preselected.
 
+**Products from a scan.** A scan never shows a separate "create product" step. It builds a product draft, the add form fills in from it, and one save writes the product and its lot together (or neither, if anything fails).
+
+- **Known barcode:** the local product is used as is. If lots of it already exist, offer "same date as one of these" (add to that lot) or "different date" (new lot, the default).
+- **Unknown barcode, found in Open Food Facts:** the draft takes the name, calories (kcal per 100 g × the package's net weight, converted to the product's base unit) and a shelf-life profile guessed from the category tags, falling back to the conservative unknown-food profile when there's no confident match. Everything is editable before saving.
+- **Unknown barcode, not found or offline:** the barcode is kept and the form asks for the minimum: name, category, and calories for food. A product saved without calories is listed in Focus next as missing nutrition. A later lookup may fill empty fields but never overwrites what the user entered.
+- **Unit kind:** single containers (cans, jars, bottles, MREs) default to count, with calories per item; bulk packages (bags and jugs over about 2 lb or 1 gal) default to mass or volume so partial use can be recorded. The first save shows the choice; it's fixed once the product has lots.
+- **One barcode per product.** Different sizes of the same food are different products.
+
 **Back-fill mode.** A "pantry walk" mode keeps the camera open and the location fixed, so you can scan shelf by shelf and confirm each item with a single tap.
 
 ## Tech stack
