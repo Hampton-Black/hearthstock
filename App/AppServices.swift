@@ -2,7 +2,8 @@ import HearthstockCore
 import HearthstockStore
 import SwiftUI
 
-/// Everything the screens talk to: repository protocols, not their GRDB implementations.
+/// Everything the screens talk to: repository protocols, not their GRDB implementations. The only app file that
+/// imports HearthstockStore.
 struct AppServices: Sendable {
     let sites: any SiteRepository
     let people: any PersonRepository
@@ -12,6 +13,7 @@ struct AppServices: Sendable {
     let kits: any KitRepository
     let shelfLifeOverrides: any ShelfLifeOverrideRepository
     let runwayInputs: any RunwayInputsLoader
+    let backup: any BackupService
     let profiles: ShelfLifeProfileTable
 
     init(database: AppDatabase, profiles: ShelfLifeProfileTable) {
@@ -23,6 +25,7 @@ struct AppServices: Sendable {
         kits = GRDBKitRepository(database: database)
         shelfLifeOverrides = GRDBShelfLifeOverrideRepository(database: database)
         runwayInputs = GRDBRunwayInputsLoader(database: database)
+        backup = GRDBBackup(database: database)
         self.profiles = profiles
     }
 
@@ -38,7 +41,4 @@ struct AppServices: Sendable {
     }
 }
 
-extension EnvironmentValues {
-    /// Set once the database is open; nil before that.
-    @Entry var services: AppServices?
-}
+
