@@ -1,0 +1,9 @@
+// Signing for the Hearthstock app target, included from project.yml.
+//
+// Your Apple developer team ID lives in Config/Local.xcconfig, which is gitignored. Copy
+// Config/Local.xcconfig.example to Config/Local.xcconfig and fill it in to build for an iPhone.
+// Without it the app still builds and runs on the simulator.
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

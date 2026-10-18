@@ -1,6 +1,6 @@
 name: Hearthstock
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: dev.0xhampton
   deploymentTarget:
     iOS: "18.0"
 packages:
@@ -17,6 +17,10 @@ targets:
       # button uses it; Release builds leave it out.
       - path: Packages/HearthstockKit/Tests/HearthstockCoreTests/Fixtures/sample-pantry.json
         buildPhase: resources
+    # Automatic signing; the team ID comes from the gitignored Config/Local.xcconfig, if present.
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
     dependencies:
       - package: HearthstockKit
         product: HearthstockCore
@@ -24,7 +28,7 @@ targets:
         product: HearthstockStore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.hearthstock
+        PRODUCT_BUNDLE_IDENTIFIER: dev.0xhampton.hearthstock
         PRODUCT_NAME: Hearthstock
         INFOPLIST_KEY_CFBundleDisplayName: Hearthstock
         TARGETED_DEVICE_FAMILY: "1"

@@ -1,0 +1,6 @@
+// Copy this file to Config/Local.xcconfig (gitignored) to build for your iPhone.
+//
+// DEVELOPMENT_TEAM is your 10-character Apple developer team ID. Find it in Xcode → Settings →
+// Accounts → your team, or at developer.apple.com → Account → Membership details. It isn't secret,
+// but it's yours, so it stays out of the repo.
+DEVELOPMENT_TEAM = ABCDE12345

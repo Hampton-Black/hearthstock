@@ -4,7 +4,7 @@ A script for the simulator: what to tap, and what you should see. Expected numbe
 
 ## 0. Fresh install
 
-1. Remove the app: long-press Hearthstock on the home screen → Remove App → Delete App (or `xcrun simctl uninstall booted com.example.hearthstock`).
+1. Remove the app: long-press Hearthstock on the home screen → Remove App → Delete App (or `xcrun simctl uninstall booted dev.0xhampton.hearthstock`).
 2. Build and run the `Hearthstock` scheme (Debug).
 3. **See:** three tabs, Runway, Inventory and Settings. Runway says "Home · no one yet" with an "Add your household to compute runway" card; the Food and Water cards show "— days".
 
