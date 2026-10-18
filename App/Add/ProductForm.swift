@@ -58,6 +58,16 @@ final class ProductFormModel {
             unitKind: draft.unitKind)
     }
 
+    /// Why the typed barcode can't be saved, while it can't; nil when it's blank or valid.
+    var barcodeProblem: String? {
+        do {
+            _ = try ProductDraft.normalizedBarcode(draft.barcode)
+            return nil
+        } catch {
+            return ProfileText.describe(error)
+        }
+    }
+
     /// The draft with the helper applied.
     func finishedDraft() throws(ProductDraftError) -> ProductDraft {
         var result = draft
@@ -84,6 +94,8 @@ struct ProductForm: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ProductFormModel
     @State private var writeError: String?
+    /// The barcode's error waits until the field loses focus, so a half-typed code isn't called wrong.
+    @FocusState private var editingBarcode: Bool
     private let mode: Mode
 
     init(draft: ProductDraft, onDone: @escaping (ProductDraft) -> Void) {
@@ -158,6 +170,12 @@ struct ProductForm: View {
                     TextField("Optional", text: Binding(get: { model.draft.barcode ?? "" }, set: { model.draft.barcode = $0 }))
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
+                        .focused($editingBarcode)
+                }
+            } footer: {
+                if !editingBarcode, let message = model.barcodeProblem {
+                    Label(message, systemImage: "exclamationmark.circle")
+                        .foregroundStyle(Color.hsRed)
                 }
             }
         }
@@ -306,6 +324,20 @@ enum ProfileText {
         case .invalidCalories: "Calories must be a number, zero or more."
         case .invalidWater: "Drinkable water must be a number of gallons, zero or more."
         case .invalidPackageSize: "Enter the calories and a package size greater than zero."
+        case .invalidBarcode(let error): describe(error)
+        }
+    }
+
+    static func describe(_ error: BarcodeError) -> String {
+        switch error {
+        case .empty: "Enter the barcode's digits."
+        case .nonDigits: "A barcode is digits only."
+        case .length(let count):
+            count == 14
+                ? "That's a case code. Scan or type the barcode on one item instead."
+                : "A barcode has 8, 12 or 13 digits; this has \(count)."
+        case .checkDigit: "That barcode doesn't add up. Check the digits for a typo."
+        case .unknownFormat: "That isn't a barcode the app can read."
         }
     }
 }

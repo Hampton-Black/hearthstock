@@ -9,6 +9,8 @@ public enum ProductDraftError: Error, Hashable, Sendable {
     case invalidWater
     /// A package size must be a finite amount greater than zero, in a unit of the product's kind.
     case invalidPackageSize
+    /// The barcode isn't one the app can store; see `Barcode`.
+    case invalidBarcode(BarcodeError)
 }
 
 /// A product's fields without an ID: what the Add flow holds for a new product until one save writes the product
@@ -53,8 +55,8 @@ public struct ProductDraft: Hashable, Sendable {
             shelfLifeProfileKey: product.shelfLifeProfileKey)
     }
 
-    /// The product these fields describe, with a trimmed name, a blank barcode as none, and calories kept only
-    /// for food and water only for water.
+    /// The product these fields describe, with a trimmed name, the barcode normalized (a blank one as none), and
+    /// calories kept only for food and water only for water.
     public func product(id: ProductID = ProductID()) throws(ProductDraftError) -> Product {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { throw .emptyName }
@@ -62,11 +64,22 @@ public struct ProductDraft: Hashable, Sendable {
         if let kcal, !(kcal.isFinite && kcal >= 0) { throw .invalidCalories }
         let water = category == .water ? potableWaterGalPerBaseUnit : nil
         if let water, !(water.isFinite && water >= 0) { throw .invalidWater }
-        let code = barcode?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let code: String?
+        do {
+            code = try Self.normalizedBarcode(barcode)
+        } catch {
+            throw .invalidBarcode(error)
+        }
         return Product(
-            id: id, name: trimmedName, barcode: code?.isEmpty == false ? code : nil, category: category, role: role,
+            id: id, name: trimmedName, barcode: code, category: category, role: role,
             unitKind: unitKind, kcalPerBaseUnit: kcal, potableWaterGalPerBaseUnit: water,
             shelfLifeProfileKey: shelfLifeProfileKey)
+    }
+
+    /// `raw` normalized (see `Barcode`), or nil when it's absent or blank.
+    public static func normalizedBarcode(_ raw: String?) throws(BarcodeError) -> String? {
+        guard let raw, raw.contains(where: { !$0.isWhitespace && $0 != "-" }) else { return nil }
+        return try Barcode(raw).rawValue
     }
 
     /// Calories per base unit from a package's label (Decision 6): 32,600 kcal in a 20 lb bag is 1,630 kcal per

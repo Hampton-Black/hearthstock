@@ -16,12 +16,12 @@ import Testing
 
     @Test func waterKeepsGallonsAndDropsCalories() throws {
         let draft = ProductDraft(
-            name: "Water jug", barcode: " 0123 ", category: .water, unitKind: .volume, kcalPerBaseUnit: 10,
+            name: "Water jug", barcode: " 036000-291452 ", category: .water, unitKind: .volume, kcalPerBaseUnit: 10,
             potableWaterGalPerBaseUnit: 1)
         let product = try draft.product()
         #expect(product.kcalPerBaseUnit == nil)
         #expect(product.potableWaterGalPerBaseUnit == 1)
-        #expect(product.barcode == "0123")
+        #expect(product.barcode == "0036000291452")
         #expect(product.shelfLifeProfileKey == "bottled_water")
     }
 
@@ -30,6 +30,9 @@ import Testing
         (ProductDraft(name: "Rice", kcalPerBaseUnit: -1), .invalidCalories),
         (ProductDraft(name: "Rice", kcalPerBaseUnit: .nan), .invalidCalories),
         (ProductDraft(name: "Water", category: .water, unitKind: .volume, potableWaterGalPerBaseUnit: -0.5), .invalidWater),
+        (ProductDraft(name: "Beans", barcode: "036000291453"), .invalidBarcode(.checkDigit)),
+        (ProductDraft(name: "Beans", barcode: "12345"), .invalidBarcode(.length(5))),
+        (ProductDraft(name: "Beans", barcode: "beans"), .invalidBarcode(.nonDigits)),
     ])
     func invalidDraftsAreRefused(draft: ProductDraft, error: ProductDraftError) {
         #expect(throws: error) { try draft.product() }
@@ -37,7 +40,7 @@ import Testing
 
     @Test func editingRoundTripsAProduct() throws {
         let product = Product(
-            name: "Black beans", barcode: "123", category: .food, role: .supply, unitKind: .count,
+            name: "Black beans", barcode: "0036000291452", category: .food, role: .supply, unitKind: .count,
             kcalPerBaseUnit: 385, shelfLifeProfileKey: "canned_low_acid")
         #expect(try ProductDraft(product).product(id: product.id) == product)
     }
