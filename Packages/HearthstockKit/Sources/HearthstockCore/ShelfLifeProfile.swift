@@ -20,7 +20,9 @@ public struct ShelfLifeProfile: Hashable, Sendable, Codable, Identifiable {
     public var extensionMonths: Int?
     /// Months from the acquired date when packaging is Mylar + O2 or bucket.
     public var packagedLifeMonths: Int?
-    /// Months from the acquired date when there's no printed date.
+    /// Months from the acquired date when there's no printed date: the rotation interval for date type none, and
+    /// the estimate for a best-by or use-by lot marked "no printed date". Required for dated profiles in a table
+    /// loaded from JSON.
     public var rotationMonths: Int?
 
     public var id: ShelfLifeProfileKey { key }
@@ -65,6 +67,8 @@ public struct ShelfLifeProfileTable: Hashable, Sendable {
         case duplicateKey(ShelfLifeProfileKey)
         /// Every profile needs a display name.
         case missingName(ShelfLifeProfileKey)
+        /// A best-by or use-by profile needs `rotationMonths`, the estimate for lots with no printed date.
+        case missingRotationMonths(ShelfLifeProfileKey)
     }
 
     /// In file order.
@@ -85,9 +89,13 @@ public struct ShelfLifeProfileTable: Hashable, Sendable {
         self.byKey = byKey
     }
 
-    /// Decodes a JSON array of profiles.
+    /// Decodes a JSON array of profiles: the bundled table, and later the user's edited copy. Every best-by and
+    /// use-by profile must have `rotationMonths`, so a new one can't forget its estimate.
     public init(jsonData: Data) throws {
         try self.init(profiles: JSONDecoder().decode([ShelfLifeProfile].self, from: jsonData))
+        if let undated = profiles.first(where: { $0.dateType != .none && $0.rotationMonths == nil }) {
+            throw LoadError.missingRotationMonths(undated.key)
+        }
     }
 
     /// The table shipped in `Resources/shelf-life-defaults.json`.

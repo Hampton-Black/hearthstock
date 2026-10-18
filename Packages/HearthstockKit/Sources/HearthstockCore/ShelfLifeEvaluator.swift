@@ -15,8 +15,11 @@ public enum LotState: String, Hashable, Sendable, Codable, CaseIterable {
 
 /// Notes about a lot that don't change its dates.
 public enum LotFlag: String, Hashable, Sendable, Codable, CaseIterable {
-    /// No printed date and nothing else to age it by; the UI can nudge for one.
+    /// No printed date and not marked "no printed date", so nothing ages it; the UI nudges for one.
     case missingDate
+    /// Marked "no printed date" and aged from an estimate (acquired date + the profile's `rotationMonths`), so every
+    /// date shown for it says "Est.".
+    case estimatedDate
     /// Stored refrigerated or frozen, so it lasts only while power does.
     case powerDependent
     /// Unsealed packaging (cans, paper, cardboard) in a humid location.
@@ -42,6 +45,8 @@ public struct ShelfLifeEvaluation: Hashable, Sendable {
         public var hasCaution: Bool
         /// True when the window is measured from the printed date (otherwise from the acquired date).
         public var fromPrintedDate: Bool
+        /// True when the window is an estimate for a package with no printed date (`LotFlag.estimatedDate`).
+        public var isEstimate: Bool
     }
 
     public init(state: LotState, usableBy: CalendarDate?, flags: Set<LotFlag> = [], timeline: Timeline? = nil) {
@@ -89,7 +94,7 @@ public enum ShelfLifeEvaluator {
         }
 
         guard var window = window(for: lot, profile: profile, multiplier: multiplier) else {
-            if profile.dateType != .none && lot.printedDate == nil {
+            if profile.dateType != .none && lot.printedDate == nil && !lot.noPrintedDate {
                 flags.insert(.missingDate)
             }
             return ShelfLifeEvaluation(state: .good, usableBy: nil, flags: flags)
@@ -97,9 +102,10 @@ public enum ShelfLifeEvaluator {
         if noticeWindowDays > 0, window.startsAtPrintedDate {
             window.useSoonFrom = window.goodThrough.adding(days: -noticeWindowDays)
         }
+        if window.isEstimate { flags.insert(.estimatedDate) }
         let timeline = ShelfLifeEvaluation.Timeline(
             goodThrough: window.goodThrough, useSoonFrom: window.useSoonFrom, inspectFrom: window.inspectFrom,
-            hasCaution: window.hasCaution, fromPrintedDate: window.startsAtPrintedDate)
+            hasCaution: window.hasCaution, fromPrintedDate: window.startsAtPrintedDate, isEstimate: window.isEstimate)
         return ShelfLifeEvaluation(
             state: window.state(on: today), usableBy: window.usableBy, flags: flags, timeline: timeline)
     }
@@ -112,6 +118,8 @@ public enum ShelfLifeEvaluator {
         var hasCaution: Bool
         /// True when `goodThrough` is the lot's printed date, so the notice window applies.
         var startsAtPrintedDate = false
+        /// True for the estimate given to a dated profile's lot marked "no printed date".
+        var isEstimate = false
         var useSoonFrom: CalendarDate?
 
         func state(on today: CalendarDate) -> LotState {
@@ -132,30 +140,57 @@ public enum ShelfLifeEvaluator {
         }
     }
 
+    /// The lot's window, or nil when nothing dates it.
+    ///
+    /// A best-by lot ages from the longest of its printed-date window and its packaged life (Mylar + O₂ or
+    /// bucket). A best-by or use-by lot marked "no printed date" also gets an estimate, acquired date +
+    /// `rotationMonths` scaled by climate like every profile month, and the longest window still wins, so packaging
+    /// that outlasts the estimate dates the lot. Profiles with date type none rotate from the acquired date,
+    /// unscaled, unless packaging gives a window.
     static func window(for lot: Lot, profile: ShelfLifeProfile, multiplier: Double) -> Window? {
+        var candidates: [Window] = []
         switch profile.dateType {
         case .useBy:
-            guard let printed = lot.printedDate else { return nil }
-            return Window(goodThrough: printed, usableBy: printed, hasCaution: false, startsAtPrintedDate: true)
+            if let printed = lot.printedDate {
+                return Window(goodThrough: printed, usableBy: printed, hasCaution: false, startsAtPrintedDate: true)
+            }
 
-        case .bestBy, .none:
-            var candidates: [Window] = []
-            if profile.dateType == .bestBy, let printed = lot.printedDate {
+        case .bestBy:
+            if let printed = lot.printedDate {
                 let end = scaled(from: printed, months: profile.extensionMonths ?? 0, by: multiplier)
                 candidates.append(Window(goodThrough: printed, usableBy: end, hasCaution: true, startsAtPrintedDate: true))
             }
-            if lot.packaging == .mylarO2 || lot.packaging == .bucket, let months = profile.packagedLifeMonths {
-                let end = scaled(from: lot.acquiredDate, months: months, by: multiplier)
-                candidates.append(Window(goodThrough: lot.acquiredDate, usableBy: end, hasCaution: false))
+            if let packaged = packagedWindow(for: lot, profile: profile, multiplier: multiplier) {
+                candidates.append(packaged)
             }
-            if candidates.isEmpty, lot.printedDate == nil || profile.dateType == .none,
-               let months = profile.rotationMonths
-            {
+
+        case .none:
+            if let packaged = packagedWindow(for: lot, profile: profile, multiplier: multiplier) {
+                candidates.append(packaged)
+            } else if let months = profile.rotationMonths {
                 let end = lot.acquiredDate.adding(months: months)
                 candidates.append(Window(goodThrough: lot.acquiredDate, usableBy: end, hasCaution: false))
             }
-            return candidates.max { $0.usableBy < $1.usableBy }
         }
+
+        if profile.dateType != .none, lot.printedDate == nil, lot.noPrintedDate, let months = profile.rotationMonths {
+            let end = scaled(from: lot.acquiredDate, months: months, by: multiplier)
+            candidates.append(Window(goodThrough: lot.acquiredDate, usableBy: end, hasCaution: false, isEstimate: true))
+        }
+        // On a tie the earlier candidate (printed date, then packaging) wins, so an estimate is used only when it's
+        // strictly longer.
+        return candidates.reduce(nil) { best, next in
+            guard let best else { return next }
+            return next.usableBy > best.usableBy ? next : best
+        }
+    }
+
+    private static func packagedWindow(for lot: Lot, profile: ShelfLifeProfile, multiplier: Double) -> Window? {
+        guard lot.packaging == .mylarO2 || lot.packaging == .bucket, let months = profile.packagedLifeMonths else {
+            return nil
+        }
+        let end = scaled(from: lot.acquiredDate, months: months, by: multiplier)
+        return Window(goodThrough: lot.acquiredDate, usableBy: end, hasCaution: false)
     }
 
     /// `start` plus `months`, with the span in days scaled by `multiplier` and rounded down.

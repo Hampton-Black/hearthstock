@@ -14,15 +14,18 @@ public struct InventoryQuery: Hashable, Sendable {
     public var expiringSoon: Bool
     /// Only lots of this category (the Dashboard's drill-in).
     public var category: Category?
+    /// Only lots missing a printed date (`LotFlag.missingDate`), for Focus next and the walk summary.
+    public var needsDate: Bool
 
     public init(
         grouping: InventoryGrouping = .location, search: String = "", expiringSoon: Bool = false,
-        category: Category? = nil
+        category: Category? = nil, needsDate: Bool = false
     ) {
         self.grouping = grouping
         self.search = search
         self.expiringSoon = expiringSoon
         self.category = category
+        self.needsDate = needsDate
     }
 }
 
@@ -110,6 +113,7 @@ public enum Inventory {
             guard let state = status.state, isExpiringSoon(state) else { return false }
         }
         if let category = query.category, status.product?.category != category { return false }
+        if query.needsDate, status.evaluation?.flags.contains(.missingDate) != true { return false }
         let needle = query.search.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !needle.isEmpty else { return true }
         return [status.product?.name, status.lot.notes].contains { text in

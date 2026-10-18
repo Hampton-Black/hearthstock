@@ -33,12 +33,15 @@ public enum FocusItem: Hashable, Sendable {
     case missingNutrition(lots: [LotID], products: [ProductID])
     /// Water lots measured in a non-volume unit with no gallons per unit, and those products.
     case missingWaterVolume(lots: [LotID], products: [ProductID])
+    /// Lots with no printed date entered and not marked "no printed date" (`LotFlag.missingDate`), by product name.
+    case missingDate(lots: [LotID])
 }
 
 public enum FocusNext {
     /// The Focus next list in the spec's priority order: problems that stop the math, then the limiting
     /// category's next target, then Caution and Inspect lots (soonest usable-by first), then Use soon lots (by
-    /// printed date), then lots the runway couldn't count for missing data. Ties go by product name, then lot ID.
+    /// printed date), then lots the runway couldn't count for missing data, then lots missing a printed date. Ties
+    /// go by product name, then lot ID.
     ///
     /// Expired lots aren't listed: they're not "eat or rotate" any more.
     public static func items(runway: SiteRunway, statuses: [LotStatus]) -> [FocusItem] {
@@ -71,6 +74,9 @@ public enum FocusNext {
                 lots: runway.lotsMissingWaterVolume,
                 products: uniqued(runway.lotsMissingWaterVolume.compactMap { productByLot[$0] })))
         }
+        let missingDate = statuses.filter { $0.evaluation?.flags.contains(.missingDate) == true }
+            .sorted { order($0, $1, by: \.lot.printedDate) }
+        if !missingDate.isEmpty { items.append(.missingDate(lots: missingDate.map(\.lot.id))) }
         return items
     }
 

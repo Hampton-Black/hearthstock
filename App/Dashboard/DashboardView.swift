@@ -155,6 +155,12 @@ struct DashboardView: View {
                     title: products.count == 1 ? "1 product missing water volume" : "\(products.count) products missing water volume",
                     subtitle: "Not counted in water yet")
             }
+        case .missingDate(let lots):
+            // Slice 4 Task 4 opens Inventory's "Needs a date" filter from here.
+            FocusRow(
+                symbol: "calendar.badge.exclamationmark", colors: (.hsInk2, .hsTrack),
+                title: lots.count == 1 ? "1 lot needs a date" : "\(lots.count) lots need a date",
+                subtitle: "Add the printed date, or mark it as having none")
         }
     }
 

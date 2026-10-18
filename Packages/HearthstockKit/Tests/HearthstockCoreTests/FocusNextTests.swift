@@ -179,7 +179,7 @@ import Testing
             runway: RunwayCalculator.runway(for: inputs, profiles: Self.profiles, on: fixture.today),
             statuses: LotStatusEvaluator.statuses(for: inputs, profiles: Self.profiles, on: fixture.today))
 
-        #expect(items.count == 5)
+        #expect(items.count == 6)
         guard case let .reachTarget(category, amount, unit, targetDays) = items[0] else {
             Issue.record("expected the water target first, got \(items[0])")
             return
@@ -192,5 +192,7 @@ import Testing
         let rotated: [Lot] = items[1...3].compactMap { if case .rotate(let s) = $0 { s.lot } else { nil } }
         #expect(rotated == [fixture.lot(7), fixture.lot(14), fixture.lot(2)])
         #expect(items[4] == .missingNutrition(lots: [fixture.lot(13).id], products: [fixture.lot(13).productID]))
+        // Slice 4: the homemade jerky has no printed date and isn't marked as having none.
+        #expect(items[5] == .missingDate(lots: [fixture.lot(13).id]))
     }
 }

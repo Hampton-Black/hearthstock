@@ -14,7 +14,7 @@ import Testing
             locationID: LocationID())
     }
 
-    /// white_rice ships as bestBy, 24 months extension, 120 months packaged life, no rotation.
+    /// white_rice ships as bestBy, 24 months extension, 120 months packaged life, a 60-month estimate.
     static var defaultProfile: ShelfLifeProfile { table["white_rice"]! }
 
     // MARK: Resolution order
@@ -68,7 +68,7 @@ import Testing
         #expect(profile.dateType == .bestBy)
         #expect(profile.extensionMonths == 6)
         #expect(profile.packagedLifeMonths == 120)
-        #expect(profile.rotationMonths == nil)
+        #expect(profile.rotationMonths == 60)
     }
 
     @Test func eachFieldFallsBackIndependentlyAcrossLevels() throws {
