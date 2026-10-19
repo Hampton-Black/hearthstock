@@ -1,11 +1,68 @@
+import Foundation
 import GRDB
+import HearthstockCore
+import os
 
 extension DatabaseMigrator {
     /// Registers every migration in order. Append new ones at the end; never edit one that has shipped.
     mutating func registerHearthstockMigrations() {
         registerMigration("v1_initial", migrate: createInitialSchema)
         registerMigration("v2_site_notice_window", migrate: addSiteNoticeWindow)
+        registerMigration("v3_normalize_barcodes", migrate: normalizeBarcodes)
+        registerMigration("v4_lot_no_printed_date", migrate: addLotNoPrintedDate)
+        registerMigration("v5_lookup_cache", migrate: createLookupCache)
     }
+}
+
+private let migrationLog = Logger(subsystem: "dev.0xhampton.hearthstock", category: "migrations")
+
+/// Slice 4: product barcodes in the one form `Barcode` gives (UPC-A, UPC-E and EAN-13 become one 13-digit GTIN), so
+/// a scan finds a product saved from a typed code.
+///
+/// A barcode that isn't valid, or whose normalized form another product already has, is left as it is and logged:
+/// the unique index would refuse the duplicate, and merging products is a person's call. `find(barcode:)` still
+/// matches those exactly. The rules are the GS1 standard, so calling Core's `Barcode` from a shipped migration
+/// won't change what it does.
+private func normalizeBarcodes(_ db: Database) throws {
+    let rows = try Row.fetchAll(db, sql: "SELECT id, barcode FROM product WHERE barcode IS NOT NULL ORDER BY id")
+    var taken = Set(rows.map { $0["barcode"] as String })
+    for row in rows {
+        let id: String = row["id"], raw: String = row["barcode"]
+        guard let normalized = try? Barcode(raw).rawValue else {
+            migrationLog.notice("v3_normalize_barcodes: kept invalid barcode \(raw, privacy: .public) on product \(id, privacy: .public)")
+            continue
+        }
+        guard normalized != raw else { continue }
+        guard !taken.contains(normalized) else {
+            migrationLog.notice("v3_normalize_barcodes: kept \(raw, privacy: .public) on product \(id, privacy: .public); \(normalized, privacy: .public) is another product's")
+            continue
+        }
+        try db.execute(sql: "UPDATE product SET barcode = ? WHERE id = ?", arguments: [normalized, id])
+        taken.remove(raw)
+        taken.insert(normalized)
+    }
+}
+
+/// Slice 4 Decision 1: a lot marked as having no printed date, aged from an estimate. Never set together with a
+/// printed date. Existing lots start with it off (Decision 4).
+private func addLotNoPrintedDate(_ db: Database) throws {
+    try db.execute(sql: """
+        ALTER TABLE lot ADD COLUMN noPrintedDate INTEGER NOT NULL DEFAULT 0
+            CHECK (noPrintedDate IN (0, 1) AND (noPrintedDate = 0 OR printedDate IS NULL))
+        """)
+}
+
+/// Slice 4 Decision 7: every Open Food Facts answer (found or not found), one row per normalized barcode, so each
+/// barcode leaves the phone at most once. Nothing references it; products never point at it.
+private func createLookupCache(_ db: Database) throws {
+    try db.execute(sql: """
+        CREATE TABLE lookup_cache (
+            barcode TEXT PRIMARY KEY NOT NULL CHECK (barcode <> ''),
+            outcome TEXT NOT NULL CHECK (outcome IN ('found', 'notFound')),
+            product TEXT CHECK ((outcome = 'found') = (product IS NOT NULL)),
+            fetchedAt TEXT NOT NULL
+        )
+        """)
 }
 
 /// Slice 3: each site's Use soon notice window, in whole days.

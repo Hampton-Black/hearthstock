@@ -343,7 +343,7 @@ private func populatedDatabase(clock: StoreClock = tickingClock()) async throws 
         let exportTime = Date(timeIntervalSince1970: 1_800_000_000)
         let backup = GRDBBackup(database: db, clock: .fixed(exportTime))
         let expected = BackupSummary(
-            formatVersion: 2, exportedAt: exportTime, siteNames: ["Main house"], people: 2,
+            formatVersion: 3, exportedAt: exportTime, siteNames: ["Main house"], people: 2,
             locations: fixture.locations.count, products: fixture.products.count,
             lots: fixture.lots.filter { !$0.archived }.count, archivedLots: 1)
         #expect(try await backup.summary(of: backup.export()) == expected)

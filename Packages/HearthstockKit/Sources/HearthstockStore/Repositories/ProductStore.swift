@@ -17,8 +17,21 @@ public struct GRDBProductRepository: ProductRepository {
     }
 
     public func find(barcode: String) async throws -> Product? {
-        try await database.writer.read { db in
-            try ProductRecord.filter(Column("barcode") == barcode).fetchOne(db)?.toCore()
+        let normalized = (try? Barcode(barcode))?.rawValue
+        return try await database.writer.read { db in
+            if let normalized, let record = try ProductRecord.filter(Column("barcode") == normalized).fetchOne(db) {
+                return try record.toCore()
+            }
+            // A barcode `v3_normalize_barcodes` couldn't normalize is still stored as typed.
+            return try ProductRecord.filter(Column("barcode") == barcode).fetchOne(db)?.toCore()
+        }
+    }
+
+    public func deleteIfUnused(_ id: ProductID) async throws -> Bool {
+        try await database.writer.write { db in
+            guard try LotRecord.filter(Column("productId") == id.stored).fetchCount(db) == 0 else { return false }
+            // The product's shelf-life override goes with it (ON DELETE CASCADE).
+            return try ProductRecord.deleteOne(db, key: id.stored)
         }
     }
 

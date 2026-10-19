@@ -5,8 +5,8 @@ import Foundation
 /// timestamps travel with the rows so a restore changes nothing. Add a field or table only with a new
 /// `formatVersion`.
 struct BackupDocument: Codable, Equatable {
-    /// 2 added `noticeWindowDays` to sites.
-    static let currentFormatVersion = 2
+    /// 2 added `noticeWindowDays` to sites. 3 added `noPrintedDate` to lots and the `lookupCache` table.
+    static let currentFormatVersion = 3
     /// Versions `import` and `restore` read. Fields a version lacks get the defaults its migration gave them.
     static let readableFormatVersions = 1...currentFormatVersion
 
@@ -19,6 +19,8 @@ struct BackupDocument: Codable, Equatable {
     var kits: [KitRecord]
     var lots: [LotRecord]
     var shelfLifeOverrides: [ShelfLifeOverrideRecord]
+    /// Saved Open Food Facts answers (Decision 8), so a restore onto a new phone doesn't send every barcode again.
+    var lookupCache: [LookupCacheRecord]
 
     /// The same rows in ID order under the current format, so two documents compare by content alone. A version 1
     /// file's sites already decode with the default notice window, as the migration gave them.
@@ -32,7 +34,45 @@ struct BackupDocument: Codable, Equatable {
         copy.kits.sort { $0.id < $1.id }
         copy.lots.sort { $0.id < $1.id }
         copy.shelfLifeOverrides.sort { $0.id < $1.id }
+        copy.lookupCache.sort { $0.barcode < $1.barcode }
         return copy
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, exportedAt, sites, people, products, locations, kits, lots, shelfLifeOverrides
+        case lookupCache
+    }
+
+    init(
+        formatVersion: Int, exportedAt: Date, sites: [SiteRecord], people: [PersonRecord], products: [ProductRecord],
+        locations: [LocationRecord], kits: [KitRecord], lots: [LotRecord], shelfLifeOverrides: [ShelfLifeOverrideRecord],
+        lookupCache: [LookupCacheRecord]
+    ) {
+        self.formatVersion = formatVersion
+        self.exportedAt = exportedAt
+        self.sites = sites
+        self.people = people
+        self.products = products
+        self.locations = locations
+        self.kits = kits
+        self.lots = lots
+        self.shelfLifeOverrides = shelfLifeOverrides
+        self.lookupCache = lookupCache
+    }
+
+    /// Versions 1 and 2 have no lookup cache; their lots decode with `noPrintedDate` off (`LotRecord`).
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        exportedAt = try container.decode(Date.self, forKey: .exportedAt)
+        sites = try container.decode([SiteRecord].self, forKey: .sites)
+        people = try container.decode([PersonRecord].self, forKey: .people)
+        products = try container.decode([ProductRecord].self, forKey: .products)
+        locations = try container.decode([LocationRecord].self, forKey: .locations)
+        kits = try container.decode([KitRecord].self, forKey: .kits)
+        lots = try container.decode([LotRecord].self, forKey: .lots)
+        shelfLifeOverrides = try container.decode([ShelfLifeOverrideRecord].self, forKey: .shelfLifeOverrides)
+        lookupCache = try container.decodeIfPresent([LookupCacheRecord].self, forKey: .lookupCache) ?? []
     }
 
     /// Just enough to refuse a file from a different format before trying to read the rest of it.

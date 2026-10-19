@@ -54,6 +54,8 @@ public protocol LocationRepository: Sendable {
 
 public protocol ProductRepository: Sendable {
     func get(_ id: ProductID) async throws -> Product?
+    /// The product with this barcode. `barcode` is normalized first (see `Barcode`), so a UPC-A finds a product saved
+    /// with its EAN-13 form; a code that can't be normalized is matched exactly.
     func find(barcode: String) async throws -> Product?
     /// Products whose name contains `name`, ignoring ASCII case, ordered by name. An empty `name` matches all,
     /// so there's no separate `list()`.
@@ -66,6 +68,11 @@ public protocol ProductRepository: Sendable {
     /// Inserts or updates the product. Throws `RepositoryError.unitKindLocked` when an update changes the unit
     /// kind of a product that has lots.
     func save(_ product: Product) async throws
+    /// Deletes the product (and its shelf-life override) if no lot of it exists, archived ones and other sites'
+    /// included, and returns whether it did. For undoing a walk action that created the product; a product that's
+    /// gone already returns false.
+    @discardableResult
+    func deleteIfUnused(_ id: ProductID) async throws -> Bool
 }
 
 public protocol LotRepository: Sendable {
@@ -85,6 +92,11 @@ public protocol LotRepository: Sendable {
     /// the lot unchanged.
     @discardableResult
     func consume(_ id: LotID, amount: Double) async throws -> Lot
+    /// Adds `amount` (in the product's base unit) to an unarchived lot in one write and returns it as stored: "same
+    /// date as one of these" and the walk's "Add another". The lot keeps its acquired date. Throws
+    /// `RepositoryError.invalidAmount`, `.lotNotFound` and `.lotArchived` as `consume` does.
+    @discardableResult
+    func add(_ id: LotID, amount: Double) async throws -> Lot
     func archive(_ id: LotID) async throws
     /// The unarchived lots of `siteID`, in `list` order: the current value first, then again after each write
     /// that changes them. A write to another site, or one that leaves the lots as they were, emits nothing.

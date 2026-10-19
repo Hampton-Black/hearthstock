@@ -86,6 +86,19 @@ public struct GRDBLotRepository: LotRepository {
         }
     }
 
+    public func add(_ id: LotID, amount: Double) async throws -> Lot {
+        try await database.writer.write { [clock] db in
+            guard amount.isFinite, amount > 0 else { throw RepositoryError.invalidAmount(amount) }
+            guard var record = try LotRecord.fetchOne(db, key: id.stored) else {
+                throw RepositoryError.lotNotFound(id)
+            }
+            guard !record.archived else { throw RepositoryError.lotArchived(id) }
+            record.quantity += amount
+            try record.update(db, clock: clock)
+            return try record.toCore()
+        }
+    }
+
     public func archive(_ id: LotID) async throws {
         try await database.writer.write { [clock] db in
             guard var record = try LotRecord.fetchOne(db, key: id.stored) else {

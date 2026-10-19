@@ -61,7 +61,8 @@ public struct GRDBBackup: BackupService {
                 locations: try LocationRecord.order(Column("id")).fetchAll(db),
                 kits: try KitRecord.order(Column("id")).fetchAll(db),
                 lots: try LotRecord.order(Column("id")).fetchAll(db),
-                shelfLifeOverrides: try ShelfLifeOverrideRecord.order(Column("id")).fetchAll(db)
+                shelfLifeOverrides: try ShelfLifeOverrideRecord.order(Column("id")).fetchAll(db),
+                lookupCache: try LookupCacheRecord.order(Column("barcode")).fetchAll(db)
             )
         }
     }
@@ -129,12 +130,15 @@ public struct GRDBBackup: BackupService {
         for record in document.kits { try record.insert(db) }
         for record in document.lots { try record.insert(db) }
         for record in document.shelfLifeOverrides { try record.insert(db) }
+        // Upserted: import doesn't count the cache as data, so a database being filled may already hold answers.
+        for record in document.lookupCache { try record.upsert(db) }
     }
 
     /// Children before parents. `ON DELETE RESTRICT` fires row by row, so the links between locations, and from
     /// locations to kits, are cleared before those rows go.
     private static func eraseAll(_ db: Database) throws {
         try db.execute(sql: """
+            DELETE FROM lookup_cache;
             DELETE FROM shelf_life_override;
             DELETE FROM lot;
             UPDATE location SET parentId = NULL, kitId = NULL;
@@ -146,6 +150,8 @@ public struct GRDBBackup: BackupService {
             """)
     }
 
+    /// The tables that make a database "not empty" for import. The lookup cache isn't one: answers saved before
+    /// any data was entered don't block an import.
     private static let tables = [
         "site", "person", "product", "location", "kit", "lot", "shelf_life_override",
     ]

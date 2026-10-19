@@ -14,6 +14,8 @@ struct LotRecord: StoredRecord, Equatable {
     var quantity: Double
     var acquiredDate: String
     var printedDate: String?
+    /// Slice 4 (`v4_lot_no_printed_date`); absent from version 1 and 2 backups, where it reads as off.
+    var noPrintedDate: Bool
     var packaging: String
     var climateOverride: String?
     var opened: Bool
@@ -30,6 +32,7 @@ struct LotRecord: StoredRecord, Equatable {
         quantity = lot.quantity
         acquiredDate = lot.acquiredDate.iso
         printedDate = lot.printedDate?.iso
+        noPrintedDate = lot.noPrintedDate
         packaging = lot.packaging.rawValue
         climateOverride = lot.climateOverride?.rawValue
         opened = lot.opened
@@ -45,6 +48,7 @@ struct LotRecord: StoredRecord, Equatable {
             quantity: quantity,
             acquiredDate: try decoder.date("acquiredDate", acquiredDate),
             printedDate: try decoder.optionalDate("printedDate", printedDate),
+            noPrintedDate: noPrintedDate,
             packaging: try decoder.enum("packaging", packaging),
             locationID: try decoder.id("locationId", locationId),
             climateOverride: try decoder.optionalEnum("climateOverride", climateOverride),
@@ -52,5 +56,31 @@ struct LotRecord: StoredRecord, Equatable {
             opened: opened,
             archived: archived
         )
+    }
+}
+
+extension LotRecord {
+    private enum CodingKeys: String, CodingKey {
+        case id, siteId, productId, locationId, quantity, acquiredDate, printedDate, noPrintedDate, packaging
+        case climateOverride, opened, archived, notes, createdAt, updatedAt
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        siteId = try container.decode(String.self, forKey: .siteId)
+        productId = try container.decode(String.self, forKey: .productId)
+        locationId = try container.decode(String.self, forKey: .locationId)
+        quantity = try container.decode(Double.self, forKey: .quantity)
+        acquiredDate = try container.decode(String.self, forKey: .acquiredDate)
+        printedDate = try container.decodeIfPresent(String.self, forKey: .printedDate)
+        noPrintedDate = try container.decodeIfPresent(Bool.self, forKey: .noPrintedDate) ?? false
+        packaging = try container.decode(String.self, forKey: .packaging)
+        climateOverride = try container.decodeIfPresent(String.self, forKey: .climateOverride)
+        opened = try container.decode(Bool.self, forKey: .opened)
+        archived = try container.decode(Bool.self, forKey: .archived)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
     }
 }
