@@ -41,10 +41,18 @@ enum CameraAccess: Equatable {
 }
 
 /// The back camera's torch, for dark pantry corners. Hidden on devices without one.
+///
+/// The scanner runs on the back camera the system picks, which on recent iPhones is a virtual device (triple or
+/// dual-wide, for automatic macro switching). Changing the torch through a different device, such as the plain
+/// wide-angle camera, stalls the scanner's session, so the torch goes through the same virtual device, found in
+/// the order the system prefers.
 @MainActor @Observable
 final class Torch {
     private(set) var isOn = false
-    let isAvailable = AVCaptureDevice.default(for: .video)?.hasTorch ?? false
+    private let device = Torch.backCamera()
+    var isAvailable: Bool { device?.hasTorch ?? false }
+    /// Which camera the torch is driven through, for the debug scanner screen.
+    var deviceName: String { device?.localizedName ?? "none" }
 
     func toggle() { set(!isOn) }
 
@@ -53,7 +61,7 @@ final class Torch {
     }
 
     private func set(_ on: Bool) {
-        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else { return }
+        guard let device, device.hasTorch, device.isTorchAvailable else { return }
         do {
             try device.lockForConfiguration()
             device.torchMode = on ? .on : .off
@@ -62,6 +70,13 @@ final class Torch {
         } catch {
             isOn = false
         }
+    }
+
+    private static func backCamera() -> AVCaptureDevice? {
+        AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera],
+            mediaType: .video, position: .back
+        ).devices.first
     }
 }
 
@@ -76,8 +91,11 @@ final class ScannerModel {
     var onEvent: (ScanDebouncer.Event) -> Void = { _ in }
 
     var isHolding: Bool { debouncer.isHolding }
+    /// The codes the camera sees right now, for the debug scanner screen.
+    private(set) var inView: Set<Barcode> = []
 
     func sighted(_ codes: Set<Barcode>) {
+        inView = codes
         if let event = debouncer.sighted(codes, at: .now) { handle(event) }
     }
 

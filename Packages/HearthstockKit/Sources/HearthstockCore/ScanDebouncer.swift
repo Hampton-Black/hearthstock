@@ -4,7 +4,8 @@ import Foundation
 ///
 /// - A code is accepted once, then ignored while it stays in frame.
 /// - A code that leaves the frame and comes back within `returnGap` is still the same scan; after longer, it's a new
-///   one.
+///   one. The code accepted last needs `sameCodeGap` instead: the scanner can lose a code for a moment while it's
+///   held still, and that mustn't read as a second scan.
 /// - A code seen anew after it was added is a repeat ("Scanned again"), not a new scan.
 /// - Each accepted scan holds the debouncer until `resume()`: while a card or the next screen is showing, other
 ///   codes are ignored, so a can sliding past in the background doesn't replace what you're reading. A code that
@@ -18,14 +19,17 @@ public struct ScanDebouncer: Hashable, Sendable {
 
     /// How long a code must be out of frame before seeing it again counts as a new scan.
     public static let returnGap: TimeInterval = 1.5
+    /// The same for the code accepted last.
+    public static let sameCodeGap: TimeInterval = 3
 
     /// True from an accepted scan until `resume()`.
     public private(set) var isHolding = false
     private var inFrame: Set<Barcode> = []
     private var leftAt: [Barcode: Date] = [:]
     private var added: Set<Barcode> = []
-    /// Codes that arrived while holding, in arrival order.
+    /// Codes that arrived while holding, in arrival order. Never the code being held.
     private var waiting: [Barcode] = []
+    private var lastAccepted: Barcode?
 
     public init() {}
 
@@ -40,8 +44,12 @@ public struct ScanDebouncer: Hashable, Sendable {
 
         var event: Event?
         for code in arriving {
-            if let left = leftAt.removeValue(forKey: code), time.timeIntervalSince(left) < Self.returnGap {
+            let gap = code == lastAccepted ? Self.sameCodeGap : Self.returnGap
+            if let left = leftAt.removeValue(forKey: code), time.timeIntervalSince(left) < gap {
                 continue  // back from a moment out of frame: the same scan
+            }
+            if isHolding && code == lastAccepted {
+                continue  // the code on the card, back in view: still the same scan
             }
             if isHolding || event != nil {
                 if !waiting.contains(code) { waiting.append(code) }
@@ -53,8 +61,15 @@ public struct ScanDebouncer: Hashable, Sendable {
         if event == nil, !isHolding, !waiting.isEmpty {
             event = self.event(for: waiting.removeFirst())
         }
-        if event != nil { isHolding = true }
+        if let event { accept(event) }
         return event
+    }
+
+    private mutating func accept(_ event: Event) {
+        isHolding = true
+        switch event {
+        case .scan(let code), .repeat(let code): lastAccepted = code
+        }
     }
 
     private func event(for code: Barcode) -> Event {
@@ -65,8 +80,9 @@ public struct ScanDebouncer: Hashable, Sendable {
     /// Nil while holding.
     public mutating func typed(_ code: Barcode) -> Event? {
         guard !isHolding else { return nil }
-        isHolding = true
-        return event(for: code)
+        let event = event(for: code)
+        accept(event)
+        return event
     }
 
     /// The code was saved, so seeing it anew is a repeat.

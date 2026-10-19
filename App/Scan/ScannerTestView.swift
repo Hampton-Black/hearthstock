@@ -12,6 +12,9 @@ struct ScannerTestView: View {
     var body: some View {
         CameraScreen(title: "Scanner test", scanner: scanner) {
             VStack(spacing: 12) {
+                Text(scanner.inView.isEmpty ? "In view: nothing" : "In view: " + scanner.inView.map(\.rawValue).sorted().joined(separator: ", "))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(Color.hsCameraInk2)
                 if let last {
                     VStack(spacing: 4) {
                         Text(label(last)).font(.caption.weight(.semibold)).foregroundStyle(Color.hsCameraInk2)

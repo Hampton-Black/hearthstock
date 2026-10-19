@@ -127,12 +127,43 @@ import Testing
         #expect(first + rest == [.scan(Self.a), nil, nil])
     }
 
-    @Test func outOfFrameForTwoSecondsIsANewScan() {
+    /// The scanner can lose a code for a moment while it's held still, so the code just accepted needs a longer
+    /// absence (`sameCodeGap`) than other codes before it counts again.
+    @Test func outOfFrameForTwoSecondsIsStillTheSameScan() {
         var debouncer = ScanDebouncer()
         let first = Self.run([(0, [Self.a])], debouncer: &debouncer)
         debouncer.resume()
         let rest = Self.run([(0.5, []), (2.5, [Self.a])], debouncer: &debouncer)
+        #expect(first + rest == [.scan(Self.a), nil, nil])
+    }
+
+    @Test func outOfFrameForThreeAndAHalfSecondsIsANewScan() {
+        var debouncer = ScanDebouncer()
+        let first = Self.run([(0, [Self.a])], debouncer: &debouncer)
+        debouncer.resume()
+        let rest = Self.run([(0.5, []), (4, [Self.a])], debouncer: &debouncer)
         #expect(first + rest == [.scan(Self.a), nil, .scan(Self.a)])
+    }
+
+    /// Hampton's report: the code being held dropped out of the scanner for a moment while its card was open, and
+    /// fired again soon after Scan next without moving the camera.
+    @Test func theHeldCodeDroppingOutWhileHoldingDoesNotFireAfterResume() {
+        var debouncer = ScanDebouncer()
+        let events = Self.run([(0, [Self.a]), (1, []), (4, [Self.a])], debouncer: &debouncer)
+        #expect(events == [.scan(Self.a), nil, nil])
+        debouncer.resume()
+        #expect(debouncer.sighted([Self.a], at: Self.start.addingTimeInterval(5)) == nil)
+        #expect(debouncer.sighted([Self.a], at: Self.start.addingTimeInterval(7)) == nil)
+    }
+
+    @Test func anotherCodeOnlyNeedsTheShortGap() {
+        var debouncer = ScanDebouncer()
+        _ = Self.run([(0, [Self.b])], debouncer: &debouncer)
+        debouncer.resume()
+        _ = Self.run([(0.5, [Self.a])], debouncer: &debouncer)  // a is now the last accepted
+        debouncer.resume()
+        let rest = Self.run([(1, []), (3, [Self.b])], debouncer: &debouncer)
+        #expect(rest == [nil, .scan(Self.b)])
     }
 
     @Test func seenAgainAfterBeingAddedIsARepeat() {
@@ -140,7 +171,7 @@ import Testing
         _ = Self.run([(0, [Self.a])], debouncer: &debouncer)
         debouncer.added(Self.a)
         debouncer.resume()
-        let rest = Self.run([(1, []), (4, [Self.a])], debouncer: &debouncer)
+        let rest = Self.run([(1, []), (5, [Self.a])], debouncer: &debouncer)
         #expect(rest == [nil, .repeat(Self.a)])
     }
 
