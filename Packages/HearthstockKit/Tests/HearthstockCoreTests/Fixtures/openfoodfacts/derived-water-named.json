@@ -1,0 +1,27 @@
+{
+  "code": "0096619879212",
+  "errors": [],
+  "product": {
+    "brands": "Kirkland Signature",
+    "categories_tags": [
+      "en:beverages",
+      "en:waters",
+      "en:spring-waters"
+    ],
+    "code": "0096619879212",
+    "product_name": "Purified Drinking Water",
+    "product_quantity": "500",
+    "product_quantity_unit": "ml",
+    "quantity": "40 x 16.9 fl oz (500 ml)",
+    "serving_quantity": "500",
+    "serving_quantity_unit": "ml",
+    "serving_size": "500ml"
+  },
+  "result": {
+    "id": "product_found",
+    "lc_name": "Product found",
+    "name": "Product found"
+  },
+  "status": "success",
+  "warnings": []
+}

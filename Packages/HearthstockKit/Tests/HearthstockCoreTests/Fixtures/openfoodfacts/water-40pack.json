@@ -1,0 +1,17 @@
+{
+  "code": "0096619879212",
+  "errors": [],
+  "product": {
+    "code": "0096619879212",
+    "serving_quantity": "500",
+    "serving_quantity_unit": "ml",
+    "serving_size": "500ml"
+  },
+  "result": {
+    "id": "product_found",
+    "lc_name": "Product found",
+    "name": "Product found"
+  },
+  "status": "success",
+  "warnings": []
+}
