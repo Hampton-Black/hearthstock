@@ -257,6 +257,8 @@ struct LotTimeline: View {
                 }
                 .font(.caption)
                 .foregroundStyle(Color.hsInk3)
+                // Two-line labels ("Bought" over the month); without this they were cut to one line.
+                .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Usable by \(usableBy.medium)")
