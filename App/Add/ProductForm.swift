@@ -58,6 +58,37 @@ final class ProductFormModel {
             unitKind: draft.unitKind)
     }
 
+    /// The draft's barcode, when it's a valid one.
+    var barcode: Barcode? {
+        (try? ProductDraft.normalizedBarcode(draft.barcode)).flatMap { $0 }.flatMap { try? Barcode($0) }
+    }
+
+    /// Task 11: a product with a barcode and no calories (food) or drinking water (water) can ask Open Food Facts
+    /// again. Only empty fields are filled.
+    var canLookUpAgain: Bool {
+        guard barcode != nil else { return false }
+        switch draft.category {
+        case .food: return draft.kcalPerBaseUnit == nil && !perPackage
+        case .water: return draft.potableWaterGalPerBaseUnit == nil && !notPotable
+        default: return false
+        }
+    }
+
+    /// Asks again (the one path that skips the saved answer) and merges what's new into the empty fields.
+    func lookUpAgain(_ lookup: any ProductLookupService) async -> String {
+        guard let barcode else { return "" }
+        switch await lookup.refresh(barcode) {
+        case .found(let product):
+            let (filled, fields) = draft.fillingEmptyFields(from: product)
+            draft = filled
+            return LookupText.filled(fields)
+        case .notFound:
+            return "Open Food Facts doesn't know this barcode yet."
+        case .unavailable(let reason):
+            return LookupText.unavailable(reason)
+        }
+    }
+
     /// Why the typed barcode can't be saved, while it can't; nil when it's blank or valid.
     var barcodeProblem: String? {
         do {
@@ -96,6 +127,8 @@ struct ProductForm: View {
     @State private var writeError: String?
     /// The barcode's error waits until the field loses focus, so a half-typed code isn't called wrong.
     @FocusState private var editingBarcode: Bool
+    @State private var lookingUp = false
+    @State private var lookupMessage: String?
     private let mode: Mode
 
     init(draft: ProductDraft, onDone: @escaping (ProductDraft) -> Void) {
@@ -162,6 +195,29 @@ struct ProductForm: View {
             } footer: {
                 if let profile = session.services.profiles[model.draft.shelfLifeProfileKey] {
                     Text(ProfileText.summary(profile))
+                }
+            }
+
+            if model.canLookUpAgain || lookupMessage != nil {
+                Section {
+                    if model.canLookUpAgain {
+                        Button {
+                            Task {
+                                lookingUp = true
+                                lookupMessage = await model.lookUpAgain(session.services.lookup)
+                                lookingUp = false
+                            }
+                        } label: {
+                            HStack {
+                                Label("Look up online", systemImage: "barcode.viewfinder")
+                                Spacer()
+                                if lookingUp { ProgressView() }
+                            }
+                        }
+                        .disabled(lookingUp)
+                    }
+                } footer: {
+                    Text(lookupMessage ?? "Asks Open Food Facts about this barcode again. Only empty fields are filled; nothing you entered changes.")
                 }
             }
 

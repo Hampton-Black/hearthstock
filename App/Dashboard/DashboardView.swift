@@ -445,7 +445,15 @@ private struct ProductFixList: View {
     var body: some View {
         NavigationStack {
             List(list.products) { product in
-                NavigationLink(product.name) { ProductForm(editing: product) }
+                NavigationLink { ProductForm(editing: product) } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(product.name)
+                        if product.barcode != nil {
+                            Label("Has a barcode: Look up online is inside", systemImage: "barcode.viewfinder")
+                                .font(.caption).foregroundStyle(Color.hsInk2)
+                        }
+                    }
+                }
             }
             .hearthList()
             .navigationTitle(list.kind == .calories ? "Missing calories" : "Missing water volume")
