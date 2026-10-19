@@ -62,13 +62,22 @@ public struct ShelfLifeProfile: Hashable, Sendable, Codable, Identifiable {
 
 /// A set of shelf-life profiles looked up by key. The bundled defaults are conservative and user-editable later.
 public struct ShelfLifeProfileTable: Hashable, Sendable {
-    public enum LoadError: Error, Equatable {
+    public enum LoadError: Error, Equatable, CustomStringConvertible {
         case missingResource
         case duplicateKey(ShelfLifeProfileKey)
         /// Every profile needs a display name.
         case missingName(ShelfLifeProfileKey)
         /// A best-by or use-by profile needs `rotationMonths`, the estimate for lots with no printed date.
         case missingRotationMonths(ShelfLifeProfileKey)
+
+        public var description: String {
+            switch self {
+            case .missingResource: "shelf-life-defaults.json isn't in the app bundle"
+            case .duplicateKey(let key): "the shelf-life table lists \(key) twice"
+            case .missingName(let key): "the shelf-life profile \(key) has no name"
+            case .missingRotationMonths(let key): "the shelf-life profile \(key) has no rotationMonths"
+            }
+        }
     }
 
     /// In file order.

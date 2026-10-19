@@ -21,9 +21,18 @@ public struct OFFCategoryMap: Hashable, Sendable {
         self.init(profiles: file.profiles, waterTags: Set(file.waterTags))
     }
 
+    public enum LoadError: Error, Equatable, CustomStringConvertible {
+        case missingResource
+
+        public var description: String { "off-category-profiles.json isn't in the app bundle" }
+    }
+
+    /// No category guesses: every looked-up product starts on its category's default profile.
+    public static let empty = OFFCategoryMap(profiles: [:], waterTags: [])
+
     public static func bundled() throws -> OFFCategoryMap {
         guard let url = Bundle.module.url(forResource: "off-category-profiles", withExtension: "json") else {
-            throw ShelfLifeProfileTable.LoadError.missingResource
+            throw LoadError.missingResource
         }
         return try OFFCategoryMap(jsonData: Data(contentsOf: url))
     }

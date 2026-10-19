@@ -54,7 +54,9 @@ struct AppServices: Sendable {
     /// sure the default site exists.
     static func start() async throws -> (services: AppServices, site: Site) {
         let (database, profiles, offCategories) = try await Task.detached {
-            (try AppDatabase.onDisk(), try ShelfLifeProfileTable.bundledDefaults(), try OFFCategoryMap.bundled())
+            // The category map only improves profile guesses for looked-up products; without it the app still opens.
+            (try AppDatabase.onDisk(), try ShelfLifeProfileTable.bundledDefaults(),
+             (try? OFFCategoryMap.bundled()) ?? .empty)
         }.value
         let services = AppServices(database: database, profiles: profiles, offCategories: offCategories)
         let site = try await services.sites.ensureDefaultSite()
