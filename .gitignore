@@ -18,3 +18,4 @@ xcuserdata/
 
 # Local signing (team ID); see Config/Local.xcconfig.example
 Config/Local.xcconfig
+Config/Info.plist

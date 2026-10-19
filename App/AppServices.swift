@@ -1,9 +1,11 @@
+import Foundation
 import HearthstockCore
+import HearthstockLookup
 import HearthstockStore
 import SwiftUI
 
 /// Everything the screens talk to: repository protocols, not their GRDB implementations. The only app file that
-/// imports HearthstockStore.
+/// imports HearthstockStore or HearthstockLookup.
 struct AppServices: Sendable {
     let sites: any SiteRepository
     let people: any PersonRepository
@@ -14,9 +16,13 @@ struct AppServices: Sendable {
     let shelfLifeOverrides: any ShelfLifeOverrideRepository
     let runwayInputs: any RunwayInputsLoader
     let backup: any BackupService
+    /// Barcode lookups, cached on the phone (each barcode leaves it at most once) and honoring the Settings switch.
+    let lookup: any ProductLookupService
+    let lookupCache: any LookupCacheRepository
     let profiles: ShelfLifeProfileTable
+    let offCategories: OFFCategoryMap
 
-    init(database: AppDatabase, profiles: ShelfLifeProfileTable) {
+    init(database: AppDatabase, profiles: ShelfLifeProfileTable, offCategories: OFFCategoryMap) {
         sites = GRDBSiteRepository(database: database)
         people = GRDBPersonRepository(database: database)
         locations = GRDBLocationRepository(database: database)
@@ -26,16 +32,31 @@ struct AppServices: Sendable {
         shelfLifeOverrides = GRDBShelfLifeOverrideRepository(database: database)
         runwayInputs = GRDBRunwayInputsLoader(database: database)
         backup = GRDBBackup(database: database)
+        let cache = GRDBLookupCacheRepository(database: database)
+        lookupCache = cache
+        lookup = CachingProductLookup(
+            online: OpenFoodFactsClient(userAgent: Self.userAgent),
+            cache: cache,
+            isEnabled: { Preferences.onlineLookupEnabled })
         self.profiles = profiles
+        self.offCategories = offCategories
+    }
+
+    /// "Hearthstock/0.1.0 (contact)", from the version and the `OFF_CONTACT` build setting in project.yml.
+    static var userAgent: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "0"
+        let contact = info["OFFContact"] as? String ?? ""
+        return contact.isEmpty ? "Hearthstock/\(version)" : "Hearthstock/\(version) (\(contact))"
     }
 
     /// Opens the on-disk database (running every migration), loads the bundled shelf-life table and makes
     /// sure the default site exists.
     static func start() async throws -> (services: AppServices, site: Site) {
-        let (database, profiles) = try await Task.detached {
-            (try AppDatabase.onDisk(), try ShelfLifeProfileTable.bundledDefaults())
+        let (database, profiles, offCategories) = try await Task.detached {
+            (try AppDatabase.onDisk(), try ShelfLifeProfileTable.bundledDefaults(), try OFFCategoryMap.bundled())
         }.value
-        let services = AppServices(database: database, profiles: profiles)
+        let services = AppServices(database: database, profiles: profiles, offCategories: offCategories)
         let site = try await services.sites.ensureDefaultSite()
         return (services, site)
     }

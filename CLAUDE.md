@@ -5,7 +5,7 @@ Personal, local-first iPhone app for tracking emergency-preparedness supplies (f
 - **Spec (source of truth for behavior):** `docs/spec.md`
 - **Design (source of truth for look and feel):** `docs/design.md` (tokens, text styles, SF Symbols, custom components, screen map). If the design and the spec disagree on behavior, the spec wins.
 - **Work tracking:** Beads (`bd`). Each slice is an epic; each task is a child bead with acceptance criteria in its description. See "Task tracking" below.
-- The app is **Hearthstock**. Modules: `HearthstockKit` (Swift package) containing `HearthstockCore` and `HearthstockStore`. The name may still change, so keep it out of user-facing strings beyond the app display name.
+- The app is **Hearthstock**. Modules: `HearthstockKit` (Swift package) containing `HearthstockCore`, `HearthstockStore` and `HearthstockLookup`. The name may still change, so keep it out of user-facing strings beyond the app display name.
 
 If the spec and a bead disagree, stop and ask. If the spec is silent, pick the simplest option, note it in your summary, and keep going.
 
@@ -24,13 +24,16 @@ If the spec and a bead disagree, stop and ask. If the spec is silent, pick the s
 ├── CLAUDE.md
 ├── project.yml                  # XcodeGen manifest (committed)
 ├── Hearthstock.xcodeproj/           # GENERATED — gitignored, never edit
+├── Config/                      # Signing.xcconfig; Local.xcconfig (team ID) and Info.plist are gitignored
 ├── App/                         # SwiftUI app target: screens, view models, app entry
 ├── Packages/HearthstockKit/
 │   ├── Package.swift
 │   ├── Sources/HearthstockCore/        # pure domain: types, units, shelf life, runway math
 │   ├── Sources/HearthstockStore/       # GRDB schema, migrations, repository implementations
+│   ├── Sources/HearthstockLookup/      # Open Food Facts client and the lookup cache wrapper (the only network code)
 │   ├── Tests/HearthstockCoreTests/
-│   └── Tests/HearthstockStoreTests/
+│   ├── Tests/HearthstockStoreTests/
+│   └── Tests/HearthstockLookupTests/
 └── docs/
     ├── spec.md
     └── design.md
@@ -59,7 +62,8 @@ If the spec and a bead disagree, stop and ask. If the spec is silent, pick the s
 6. **Calendar dates are not timestamps.** Printed/expiry/acquired dates are a `CalendarDate` (year, month, day) value type, stored as ISO `YYYY-MM-DD` text. Never use `Date` for these — timezone shifts will move expiry by a day. Every function that depends on "today" takes the date as a parameter; nothing in HearthstockCore calls `Date()` directly.
 7. **Every runway is scoped to a site.** No query or calculation aggregates across sites. Sites exist in the schema from day one, even while the UI shows one.
 8. **Concurrency:** HearthstockCore is synchronous and `Sendable`. HearthstockStore exposes repositories that are `Sendable` (GRDB's `DatabaseQueue`/`DatabasePool` is thread-safe). View models are `@MainActor @Observable`. Don't silence concurrency diagnostics with `@unchecked Sendable` or `nonisolated(unsafe)` without asking.
-9. **Defaults are data, not code paths.** Shelf-life tables, climate multipliers, kit and readiness templates ship as bundled data that the user can edit later. Defaults must be conservative.
+9. **Only HearthstockLookup uses the network.** It imports Foundation and HearthstockCore, and it's the one place that uses `URLSession`. The Core protocol is `ProductLookupService`; decoding responses and mapping them to drafts are pure Core functions. Tests stub `URLProtocol` and never reach the network. Apart from `AppServices`, no app file imports HearthstockStore or HearthstockLookup.
+10. **Defaults are data, not code paths.** Shelf-life tables, climate multipliers, kit and readiness templates ship as bundled data that the user can edit later. Defaults must be conservative.
 
 ## Persistence rules (HearthstockStore)
 

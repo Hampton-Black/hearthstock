@@ -75,6 +75,13 @@ enum Preferences {
         defaults.set(id.rawValue.uuidString, forKey: "lastLocation.\(siteID)")
     }
 
+    /// Online lookup of unknown barcodes (Slice 4 Decision 6). On unless switched off. A device setting, so it isn't
+    /// in the backup.
+    static var onlineLookupEnabled: Bool {
+        get { defaults.object(forKey: "onlineLookup") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "onlineLookup") }
+    }
+
     static var lastExport: Date? {
         get { defaults.object(forKey: "lastExport") as? Date }
         set { defaults.set(newValue, forKey: "lastExport") }
