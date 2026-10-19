@@ -53,11 +53,22 @@ final class AppRouter {
     var tab: Tab = .dashboard
     /// Set by a Dashboard category card; Inventory applies it and shows a chip to clear it.
     var inventoryCategory: SupplyCategory?
-    /// Bumped to ask Inventory to apply `inventoryCategory` even if it didn't change.
+    /// Set by Focus next's "lots need a date" (and the walk summary); Inventory shows a chip to clear it.
+    var inventoryNeedsDate = false
+    /// Bumped to ask Inventory to apply `inventoryCategory` and `inventoryNeedsDate` even if they didn't change.
     var inventoryDrillIn = 0
 
     func showInventory(category: SupplyCategory?) {
         inventoryCategory = category
+        inventoryNeedsDate = false
+        inventoryDrillIn += 1
+        tab = .inventory
+    }
+
+    /// Inventory filtered to lots missing a printed date.
+    func showLotsNeedingADate() {
+        inventoryCategory = nil
+        inventoryNeedsDate = true
         inventoryDrillIn += 1
         tab = .inventory
     }

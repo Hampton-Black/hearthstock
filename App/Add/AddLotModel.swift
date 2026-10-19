@@ -38,15 +38,26 @@ final class AddLotModel: RunwayInputsModel {
         }
     }
 
-    /// The printed date: not entered (saved as none, and flagged when the profile expects one), "No expiry", or a day.
+    /// The printed date: not entered yet (flagged as missing when the profile expects one), none on the package (aged
+    /// from an estimate, Slice 4 Decision 1), or a day.
     enum PrintedDate: Equatable {
         case unset
-        case none
+        case noPrintedDate
         case day(CalendarDate)
+
+        init(_ lot: Lot) {
+            if let date = lot.printedDate {
+                self = .day(date)
+            } else {
+                self = lot.noPrintedDate ? .noPrintedDate : .unset
+            }
+        }
 
         var date: CalendarDate? {
             if case .day(let date) = self { date } else { nil }
         }
+
+        var isNoPrintedDate: Bool { self == .noPrintedDate }
     }
 
     var phase: FeedPhase = .loading
@@ -59,6 +70,8 @@ final class AddLotModel: RunwayInputsModel {
     var usePacks = false
     var packs = 1
     var printed: PrintedDate = .unset
+    /// This lot's own months for its estimate (a lot override of `rotationMonths`); nil uses the profile's.
+    var estimateMonths: Int?
     var acquired: CalendarDate
     var packaging: Packaging = .none
     var locationID: LocationID?
@@ -126,12 +139,26 @@ final class AddLotModel: RunwayInputsModel {
 
     /// What the lot would be today, before it's saved.
     var preview: LotStatus? {
-        guard let lot = makeLot(id: LotID()), let inputs, let productValue = previewProduct else { return nil }
+        guard let lot = makeLot(id: LotID()) else { return nil }
+        return status(of: lot, estimateMonths: estimateMonths)
+    }
+
+    /// The estimated usable-by date if this lot were marked "no printed date", with `months` (nil: the profile's).
+    func estimateUsableBy(months: Int?) -> CalendarDate? {
+        guard var lot = makeLot(id: LotID()) else { return nil }
+        lot.noPrintedDate = true
+        return status(of: lot, estimateMonths: months)?.evaluation?.usableBy
+    }
+
+    private func status(of lot: Lot, estimateMonths: Int?) -> LotStatus? {
+        guard let inputs, let productValue = previewProduct else { return nil }
         var products = inputs.products.filter { $0.id != productValue.id }
         products.append(productValue)
+        let overrides = estimateMonths.map { [lot.id: ShelfLifeOverride(rotationMonths: $0)] } ?? [:]
         return LotStatusEvaluator.statuses(
             for: inputs.site, lots: [lot], products: products, locations: inputs.locations, kits: inputs.kits,
-            productShelfLifeOverrides: inputs.productShelfLifeOverrides, profiles: services.profiles, on: today
+            productShelfLifeOverrides: inputs.productShelfLifeOverrides, lotShelfLifeOverrides: overrides,
+            profiles: services.profiles, on: today
         ).first
     }
 
@@ -163,8 +190,8 @@ final class AddLotModel: RunwayInputsModel {
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         return Lot(
             id: id, productID: productID, quantity: base, acquiredDate: acquired, printedDate: printed.date,
-            packaging: packaging, locationID: locationID, notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            opened: opened)
+            noPrintedDate: printed.isNoPrintedDate, packaging: packaging, locationID: locationID,
+            notes: trimmedNotes.isEmpty ? nil : trimmedNotes, opened: opened)
     }
 
     // MARK: Save
@@ -179,6 +206,9 @@ final class AddLotModel: RunwayInputsModel {
         case .new(let draft):
             try await services.lots.save(lot, newProduct: try draft.product(id: draftProductID))
         }
+        if printed.isNoPrintedDate, let estimateMonths {
+            try await services.shelfLifeOverrides.save(ShelfLifeOverride(rotationMonths: estimateMonths), for: lot.id)
+        }
         Preferences.setLastUsedLocation(lot.locationID, siteID: siteID)
         lastUsedLocationID = lot.locationID
         savedLotID = lot.id
@@ -191,6 +221,7 @@ final class AddLotModel: RunwayInputsModel {
         usePacks = false
         packs = 1
         printed = .unset
+        estimateMonths = nil
         packaging = .none
         opened = false
         notes = ""

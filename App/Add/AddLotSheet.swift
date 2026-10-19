@@ -97,7 +97,12 @@ struct AddLotSheet: View {
                     choosingDate = true
                 } label: {
                     LabeledContent("Printed date") {
-                        Text(printedText(model)).foregroundStyle(Color.hsInk2)
+                        if PrintedDateText.isMissing(model.printed, profile: model.profile) {
+                            Label(printedText(model), systemImage: "calendar.badge.exclamationmark")
+                                .foregroundStyle(Color.hsAmber)
+                        } else {
+                            Text(printedText(model)).foregroundStyle(Color.hsInk2)
+                        }
                     }
                 }
                 .foregroundStyle(Color.hsInk)
@@ -178,7 +183,8 @@ struct AddLotSheet: View {
         }
         .sheet(isPresented: $choosingDate) {
             PrintedDateSheet(
-                printed: $model.printed, dateType: model.profile?.dateType ?? .bestBy, today: today.date)
+                printed: $model.printed, estimateMonths: $model.estimateMonths, profile: model.profile,
+                today: today.date, estimate: model.estimateUsableBy(months:))
         }
     }
 
@@ -228,11 +234,9 @@ struct AddLotSheet: View {
     }
 
     private func printedText(_ model: AddLotModel) -> String {
-        switch model.printed {
-        case .unset: "Not set"
-        case .none: "No expiry"
-        case .day(let date): "\((model.profile?.dateType ?? .bestBy).label) \(date.medium)"
-        }
+        PrintedDateText.row(
+            model.printed, profile: model.profile,
+            estimate: model.printed.isNoPrintedDate ? model.preview?.evaluation?.usableBy : nil)
     }
 
     private func save(_ model: AddLotModel, addAnother: Bool) {

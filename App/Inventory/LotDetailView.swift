@@ -97,7 +97,7 @@ struct LotDetailView: View {
             if let profile = status.profile, let evaluation = status.evaluation {
                 Section {
                     LabeledContent("Printed date") {
-                        Text(status.lot.printedDate.map { "\(profile.dateType.label) \($0.medium)" } ?? "None")
+                        Text(printedDateText(status, profile: profile))
                     }
                     LabeledContent {
                         Text(profile.name).multilineTextAlignment(.trailing)
@@ -117,7 +117,7 @@ struct LotDetailView: View {
                     }
                     LabeledContent("Humidity", value: status.humidity.title)
                     LabeledContent("Packaging", value: status.lot.packaging.title)
-                    LabeledContent("Usable by") {
+                    LabeledContent(evaluation.timeline?.isEstimate == true ? "Est. usable by" : "Usable by") {
                         Text(evaluation.usableBy?.medium ?? "No limit").fontWeight(.semibold)
                     }
                     LabeledContent("Runway", value: LotText.runway(RunwayEffect(status)))
@@ -172,6 +172,12 @@ struct LotDetailView: View {
             text += " · " + (unit == .kcal ? Amount.kcal(amount) : Amount.gallons(amount))
         }
         return text
+    }
+
+    private func printedDateText(_ status: LotStatus, profile: ShelfLifeProfile) -> String {
+        if let printed = status.lot.printedDate { return "\(profile.dateType.label) \(printed.medium)" }
+        if profile.dateType == .none { return "Not needed" }
+        return status.lot.noPrintedDate ? "None on the package" : "Not entered"
     }
 
     private func climateNote(_ status: LotStatus) -> String {
@@ -242,11 +248,12 @@ struct LotTimeline: View {
                 }
                 .frame(height: 20)
                 HStack {
-                    Text("\(timeline.fromPrintedDate ? "Bought" : "Stored")\n\(lot.acquiredDate.monthYear)")
+                    Text("\(timeline.fromPrintedDate || timeline.isEstimate ? "Bought" : "Stored")\n\(lot.acquiredDate.monthYear)")
                     Spacer()
                     Text("Today").fontWeight(.semibold)
                     Spacer()
-                    Text("Usable by\n\(usableBy.monthYear)").multilineTextAlignment(.trailing)
+                    Text("\(timeline.isEstimate ? "Est. usable by" : "Usable by")\n\(usableBy.monthYear)")
+                        .multilineTextAlignment(.trailing)
                 }
                 .font(.caption)
                 .foregroundStyle(Color.hsInk3)

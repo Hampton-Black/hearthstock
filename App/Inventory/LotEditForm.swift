@@ -8,6 +8,7 @@ struct LotEditForm: View {
     @Environment(\.dismiss) private var dismiss
     @State private var lot: Lot
     @State private var printed: AddLotModel.PrintedDate
+    @State private var estimateMonths: Int?
     @State private var choosingDate = false
     @State private var writeError: String?
     private let product: Product?
@@ -15,13 +16,36 @@ struct LotEditForm: View {
 
     init(lot: Lot, product: Product?, inputs: RunwayInputs) {
         _lot = State(initialValue: lot)
-        _printed = State(initialValue: lot.printedDate.map { .day($0) } ?? .none)
+        _printed = State(initialValue: AddLotModel.PrintedDate(lot))
+        _estimateMonths = State(initialValue: inputs.lotShelfLifeOverrides[lot.id]?.rotationMonths)
         self.product = product
         self.inputs = inputs
     }
 
-    private var dateType: ShelfLifeDateType {
-        product.flatMap { session.services.profiles[$0.shelfLifeProfileKey]?.dateType } ?? .bestBy
+    private var profile: ShelfLifeProfile? {
+        product.flatMap { session.services.profiles[$0.shelfLifeProfileKey] }
+    }
+
+    /// The lot as it would be saved: these dates, and this estimate when it has no printed date.
+    private func edited(months: Int?) -> (lot: Lot, override: ShelfLifeOverride) {
+        var saved = lot
+        saved.printedDate = printed.date
+        saved.noPrintedDate = printed.isNoPrintedDate
+        var override = inputs.lotShelfLifeOverrides[lot.id] ?? ShelfLifeOverride()
+        override.rotationMonths = months
+        return (saved, override)
+    }
+
+    private func estimate(months: Int?) -> CalendarDate? {
+        var (saved, override) = edited(months: months)
+        saved.printedDate = nil
+        saved.noPrintedDate = true
+        let products = product.map { [$0] } ?? []
+        return LotStatusEvaluator.statuses(
+            for: inputs.site, lots: [saved], products: products, locations: inputs.locations, kits: inputs.kits,
+            productShelfLifeOverrides: inputs.productShelfLifeOverrides, lotShelfLifeOverrides: [saved.id: override],
+            profiles: session.services.profiles, on: today.date
+        ).first?.evaluation?.usableBy
     }
 
     var body: some View {
@@ -31,8 +55,14 @@ struct LotEditForm: View {
                     choosingDate = true
                 } label: {
                     LabeledContent("Printed date") {
-                        Text(printed.date.map { "\(dateType.label) \($0.medium)" } ?? "No date")
-                            .foregroundStyle(Color.hsInk2)
+                        let text = PrintedDateText.row(
+                            printed, profile: profile,
+                            estimate: printed.isNoPrintedDate ? estimate(months: estimateMonths) : nil)
+                        if PrintedDateText.isMissing(printed, profile: profile) {
+                            Label(text, systemImage: "calendar.badge.exclamationmark").foregroundStyle(Color.hsAmber)
+                        } else {
+                            Text(text).foregroundStyle(Color.hsInk2)
+                        }
                     }
                 }
                 .foregroundStyle(Color.hsInk)
@@ -70,19 +100,23 @@ struct LotEditForm: View {
             ToolbarItem(placement: .confirmationAction) { Button("Save") { save() } }
         }
         .sheet(isPresented: $choosingDate) {
-            PrintedDateSheet(printed: $printed, dateType: dateType, today: today.date)
+            PrintedDateSheet(
+                printed: $printed, estimateMonths: $estimateMonths, profile: profile, today: today.date,
+                estimate: estimate(months:))
         }
         .errorAlert($writeError)
     }
 
     private func save() {
-        var saved = lot
-        saved.printedDate = printed.date
+        var (saved, override) = edited(months: estimateMonths)
         let notes = saved.notes?.trimmingCharacters(in: .whitespacesAndNewlines)
         saved.notes = notes?.isEmpty == false ? notes : nil
+        let overrideChanged = override != (inputs.lotShelfLifeOverrides[lot.id] ?? ShelfLifeOverride())
         Task {
             do {
                 try await session.services.lots.save(saved)
+                // An empty override clears it, so going back to the profile's months removes the lot's own.
+                if overrideChanged { try await session.services.shelfLifeOverrides.save(override, for: saved.id) }
                 dismiss()
             } catch {
                 writeError = ErrorText.describe(error)

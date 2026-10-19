@@ -11,9 +11,12 @@ enum LotText {
         let label = profile.dateType.label
         guard let timeline = evaluation.timeline, let usableBy = evaluation.usableBy else {
             if evaluation.flags.contains(.missingDate) {
-                return "No printed date, so it counts as Good. Add the date from the package if it has one."
+                return "No printed date entered, so it counts as Good for now. Add the date from the package, or mark it as having none to get an estimate."
             }
             return "\(profile.name) doesn't expire, so it stays Good."
+        }
+        if timeline.isEstimate {
+            return estimateWhy(status, state: evaluation.state, timeline: timeline, usableBy: usableBy)
         }
         switch evaluation.state {
         case .good:
@@ -32,6 +35,21 @@ enum LotText {
             return "In the last 20% of its window, usable until \(usableBy.monthYear). Check before use; bulging, rusted or leaking cans go regardless of date."
         case .expired:
             return "Past its usable-by date (\(usableBy.medium)). It no longer counts toward runway."
+        }
+    }
+
+    /// Why an estimated lot is in its state: every date says it's an estimate, never a printed one.
+    private static func estimateWhy(
+        _ status: LotStatus, state: LotState, timeline: ShelfLifeEvaluation.Timeline, usableBy: CalendarDate
+    ) -> String {
+        let since = "No printed date, so it's estimated from when you got it (\(status.lot.acquiredDate.monthYear))"
+        switch state {
+        case .good, .useSoon, .caution:
+            return "\(since): est. usable until \(usableBy.monthYear). Check it before use from \(timeline.inspectFrom.monthYear)."
+        case .inspect:
+            return "\(since), and it's in the last 20% of that estimate, until \(usableBy.monthYear). Check before use."
+        case .expired:
+            return "\(since), and it's past the est. usable-by date (\(usableBy.medium)). It no longer counts toward runway."
         }
     }
 
@@ -70,6 +88,8 @@ enum LotText {
         var parts = [QuantityText.format(status.lot, product: status.product)]
         if let printed = status.lot.printedDate {
             parts.append("\((status.profile?.dateType ?? .bestBy).label.lowercased()) \(printed.monthYear)")
+        } else if status.evaluation?.timeline?.isEstimate == true, let usableBy = status.evaluation?.usableBy {
+            parts.append("est. use by \(usableBy.monthYear)")
         } else if status.profile?.dateType == ShelfLifeDateType.none {
             parts.append("stored \(status.lot.acquiredDate.monthYear)")
         }

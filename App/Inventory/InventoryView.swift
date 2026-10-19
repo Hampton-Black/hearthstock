@@ -46,11 +46,15 @@ struct InventoryView: View {
         .task {
             let model = InventoryModel(profiles: session.services.profiles)
             model.query.category = router.inventoryCategory
+            model.query.needsDate = router.inventoryNeedsDate
             self.model = model
             await model.subscribe(session.services, siteID: session.siteID)
         }
         .onChange(of: today.date, initial: true) { _, day in model?.setToday(day) }
-        .onChange(of: router.inventoryDrillIn) { model?.query.category = router.inventoryCategory }
+        .onChange(of: router.inventoryDrillIn) {
+            model?.query.category = router.inventoryCategory
+            model?.query.needsDate = router.inventoryNeedsDate
+        }
         .sheet(item: $sheet) { sheet in UseAdjustSheet(lotID: sheet.lotID, mode: sheet.mode) }
     }
 
@@ -129,6 +133,23 @@ struct InventoryView: View {
                 }
                 .buttonStyle(ChipStyle(selected: true))
                 .accessibilityLabel("\(category.title) filter, clear")
+            }
+            if model.query.needsDate {
+                Button {
+                    model.query.needsDate = false
+                    router.inventoryNeedsDate = false
+                } label: {
+                    Label {
+                        HStack(spacing: 6) {
+                            Text("Needs a date")
+                            Image(systemName: "xmark").font(.caption.weight(.bold))
+                        }
+                    } icon: {
+                        Image(systemName: "calendar.badge.exclamationmark")
+                    }
+                }
+                .buttonStyle(ChipStyle(selected: true))
+                .accessibilityLabel("Needs a date filter, clear")
             }
             Button {
                 model.query.expiringSoon.toggle()
