@@ -8,6 +8,7 @@ struct WalkSummaryView: View {
     let finish: () -> Void
 
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var openLot: LotRef?
 
     private struct LotRef: Identifiable {
@@ -37,7 +38,9 @@ struct WalkSummaryView: View {
         }
         .background(Color.hsBg)
         .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 12) {
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
+            layout {
                 Menu {
                     ForEach(locationPaths, id: \.last!.id) { path in
                         Button(path.map(\.name).joined(separator: " › ")) { walkAnother(path.last!.id) }

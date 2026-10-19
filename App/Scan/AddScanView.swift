@@ -157,6 +157,7 @@ struct AddScanView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ScanFlowModel?
     @State private var walking: WalkStart?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Group {
@@ -204,7 +205,9 @@ struct AddScanView: View {
                         .transition(.opacity)
                 }
                 locationChip(model)
-                HStack(spacing: 12) {
+                let layout = typeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
+                layout {
                     Button { model.typeItIn() } label: {
                         Label("Type it in", systemImage: "pencil").frame(maxWidth: .infinity)
                     }
@@ -234,7 +237,8 @@ struct AddScanView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "mappin.and.ellipse")
-                Text("Into ").foregroundStyle(Color.hsCameraInk2) + Text(model.locationName)
+                (Text("Into ").foregroundStyle(Color.hsCameraInk2) + Text(model.locationName))
+                    .multilineTextAlignment(.leading)
                 Spacer()
                 Image(systemName: "chevron.down").font(.caption.weight(.bold))
             }

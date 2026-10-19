@@ -119,6 +119,8 @@ struct SettingsView: View {
                 Text("A place inside another (a shelf in the garage) inherits its climate unless you set its own.")
             }
 
+            CameraSection()
+
             OnlineLookupSection()
 
             BackupSection(controller: backup, siteName: inputs.site.name)

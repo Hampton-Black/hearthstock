@@ -17,6 +17,7 @@ struct ScanExistingView: View {
     @State private var amount: Double?
     @State private var writeError: String?
     @State private var saving = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var isCount: Bool { product.unitKind == .count }
     private var addAmount: Double? { isCount ? Double(count) : amount.flatMap { $0 > 0 ? $0 : nil } }
@@ -93,9 +94,11 @@ struct ScanExistingView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(LotText.detailLine(status)).foregroundStyle(Color.hsInk).numeric()
                 Text(LotText.path(status)).font(.subheadline).foregroundStyle(Color.hsInk2)
+                // At accessibility sizes the badge moves to its own line (design §7).
+                if typeSize.isAccessibilitySize, let state = status.state { StateBadge(state: state) }
             }
             Spacer()
-            if let state = status.state { StateBadge(state: state) }
+            if !typeSize.isAccessibilitySize, let state = status.state { StateBadge(state: state) }
         }
     }
 

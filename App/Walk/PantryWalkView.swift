@@ -113,6 +113,14 @@ struct PantryWalkView: View {
 struct WalkConfirmCard: View {
     let model: PantryWalkModel
     @State private var choosingDate = false
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// Side by side, or stacked at accessibility text sizes (design §7).
+    private var row: AnyLayout {
+        typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+    }
 
     var body: some View {
         if let card = model.card {
@@ -135,9 +143,9 @@ struct WalkConfirmCard: View {
             case .new(_, found: false, _):
                 newProductFields(card)
             }
-            HStack(spacing: 12) {
+            row {
                 quantity(card)
-                Spacer(minLength: 0)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
                 Button { choosingDate = true } label: {
                     Text(dateChip(card)).font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 12).frame(minHeight: 44)
@@ -146,24 +154,34 @@ struct WalkConfirmCard: View {
                 }
                 .disabled(!needsDate(card))
             }
-            // Skip and Add at 1:2 (design §6).
-            Grid(horizontalSpacing: 12) {
-                GridRow {
-                    Button("Skip") { model.skip() }
-                        .buttonStyle(PrimaryButtonStyle(role: .secondary))
-                    Button("Add to \(model.locationName)") { Task { await model.add() } }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .disabled(!canAdd(card))
-                        .opacity(canAdd(card) ? 1 : 0.5)
-                        .gridCellColumns(2)
+            if typeSize.isAccessibilitySize {
+                VStack(spacing: 12) {
+                    addButton(card)
+                    Button("Skip") { model.skip() }.buttonStyle(PrimaryButtonStyle(role: .secondary))
+                }
+            } else {
+                // Skip and Add at 1:2 (design §6).
+                Grid(horizontalSpacing: 12) {
+                    GridRow {
+                        Button("Skip") { model.skip() }
+                            .buttonStyle(PrimaryButtonStyle(role: .secondary))
+                        addButton(card).gridCellColumns(2)
+                    }
                 }
             }
         }
         .padding(16)
         .foregroundStyle(Color.hsInk)
         .background(Color.hsCard, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func addButton(_ card: PantryWalkModel.Card) -> some View {
+        Button("Add to \(model.locationName)") { Task { await model.add() } }
+            .buttonStyle(PrimaryButtonStyle())
+            .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+            .minimumScaleFactor(0.8)
+            .disabled(!canAdd(card))
+            .opacity(canAdd(card) ? 1 : 0.5)
     }
 
     private func header(_ card: PantryWalkModel.Card) -> String {
@@ -307,6 +325,7 @@ struct WalkConfirmCard: View {
 struct WalkDuplicateCard: View {
     let duplicate: PantryWalkModel.Duplicate
     let model: PantryWalkModel
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -322,7 +341,9 @@ struct WalkDuplicateCard: View {
                 Task { await model.addAnother() }
             }
             .buttonStyle(PrimaryButtonStyle())
-            HStack(spacing: 12) {
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
+            layout {
                 Button("Oops, double scan") { model.doubleScan() }
                     .buttonStyle(PrimaryButtonStyle(role: .secondary))
                 Button("Different date") { model.differentDate() }
