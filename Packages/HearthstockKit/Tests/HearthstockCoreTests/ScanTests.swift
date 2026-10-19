@@ -173,4 +173,15 @@ import Testing
         debouncer.resume()
         #expect(debouncer.sighted([Self.b, Self.a], at: Self.start.addingTimeInterval(0.5)) == .scan(Self.b))
     }
+
+    @Test func aTypedCodeTakesTheSamePath() {
+        var debouncer = ScanDebouncer()
+        #expect(debouncer.typed(Self.a) == .scan(Self.a))
+        #expect(debouncer.typed(Self.b) == nil)  // holding
+        debouncer.added(Self.a)
+        debouncer.resume()
+        #expect(debouncer.typed(Self.a) == .repeat(Self.a))
+        debouncer.resume()
+        #expect(debouncer.sighted([Self.b], at: Self.start) == .scan(Self.b))
+    }
 }

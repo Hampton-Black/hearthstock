@@ -20,6 +20,14 @@ extension Color {
     static let hsAmberLine = Color(light: 0xD9A441, dark: 0xC9973A)
     static let hsRed = Color(light: 0xA3241B, dark: 0xF2918A)
     static let hsRedBg = Color(light: 0xF7DFDB, dark: 0x41201C)
+
+    // Camera screens (scan, pantry walk) are always dark (design.md §1).
+    static let hsCameraBg = Color(light: 0x1C1813, dark: 0x1C1813)
+    static let hsCameraInk = Color(light: 0xF6EFE4, dark: 0xF6EFE4)
+    static let hsCameraInk2 = Color(light: 0xCFC3B2, dark: 0xCFC3B2)
+    static let hsCameraAccent = Color(light: 0x86BBA6, dark: 0x86BBA6)
+    /// Controls on the camera: a translucent light fill.
+    static let hsCameraControl = Color.white.opacity(0.12)
 }
 
 private extension Color {

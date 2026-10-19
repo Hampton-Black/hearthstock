@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var addingPerson = false
     @State private var addingLocation = false
     @State private var backup = BackupController()
+    @State private var testingScanner = false
 
     var body: some View {
         NavigationStack {
@@ -64,6 +65,9 @@ struct SettingsView: View {
                 }
             }
         }
+        #if DEBUG
+        .fullScreenCover(isPresented: $testingScanner) { ScannerTestView() }
+        #endif
     }
 
     private func form(_ inputs: RunwayInputs) -> some View {
@@ -120,6 +124,7 @@ struct SettingsView: View {
             #if DEBUG
             Section("Developer · Debug builds only") {
                 Button("Load sample pantry") { Task { await loadSamplePantry() } }
+                Button("Test the scanner") { testingScanner = true }
             }
             #endif
         }

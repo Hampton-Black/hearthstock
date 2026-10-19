@@ -61,6 +61,14 @@ public struct ScanDebouncer: Hashable, Sendable {
         added.contains(code) ? .repeat(code) : .scan(code)
     }
 
+    /// A code typed by hand ("Type a barcode"): the same path as a camera read, except that it's never "in frame".
+    /// Nil while holding.
+    public mutating func typed(_ code: Barcode) -> Event? {
+        guard !isHolding else { return nil }
+        isHolding = true
+        return event(for: code)
+    }
+
     /// The code was saved, so seeing it anew is a repeat.
     public mutating func added(_ code: Barcode) {
         added.insert(code)
