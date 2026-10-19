@@ -13,9 +13,13 @@ final class ProductFormModel {
     var notPotable: Bool
     /// True when the product has lots, so its unit kind is fixed.
     var unitKindLocked = false
+    /// The lookup a scanned draft came from: changing the unit kind refills calories (or water) for the new unit
+    /// while they're still the looked-up values.
+    let lookedUp: LookedUpProduct?
 
-    init(draft: ProductDraft) {
+    init(draft: ProductDraft, lookedUp: LookedUpProduct? = nil) {
         self.draft = draft
+        self.lookedUp = lookedUp
         packageUnit = draft.unitKind.baseUnit
         notPotable = draft.category == .water && draft.potableWaterGalPerBaseUnit == nil
     }
@@ -32,9 +36,20 @@ final class ProductFormModel {
 
     func setUnitKind(_ kind: UnitKind) {
         guard !unitKindLocked else { return }
+        let old = draft.unitKind
+        let lookedUpKcal = lookedUp.flatMap { OpenFoodFacts.suggestedKcal($0, unitKind: old) }
         draft.unitKind = kind
         packageUnit = kind.baseUnit
         resetWater()
+        // Calories per base unit mean something else in the new unit: refill from the lookup while the field still
+        // holds the looked-up value (or nothing), so a 25 lb bag switched to mass gets calories per lb.
+        if let lookedUp, draft.category == .food, draft.kcalPerBaseUnit == nil || draft.kcalPerBaseUnit == lookedUpKcal {
+            draft.kcalPerBaseUnit = OpenFoodFacts.suggestedKcal(lookedUp, unitKind: kind)
+        }
+        if let lookedUp, draft.category == .water, !notPotable {
+            draft.potableWaterGalPerBaseUnit = OpenFoodFacts.suggestedWaterGal(lookedUp, unitKind: kind)
+                ?? draft.potableWaterGalPerBaseUnit
+        }
     }
 
     func setNotPotable(_ value: Bool) {
@@ -130,15 +145,22 @@ struct ProductForm: View {
     @State private var lookingUp = false
     @State private var lookupMessage: String?
     private let mode: Mode
+    /// Editing, and a draft opened in its own sheet, get Cancel; a draft pushed from the picker goes back instead.
+    private let showsCancel: Bool
 
-    init(draft: ProductDraft, onDone: @escaping (ProductDraft) -> Void) {
-        _model = State(initialValue: ProductFormModel(draft: draft))
+    init(
+        draft: ProductDraft, lookedUp: LookedUpProduct? = nil, showsCancel: Bool = false,
+        onDone: @escaping (ProductDraft) -> Void
+    ) {
+        _model = State(initialValue: ProductFormModel(draft: draft, lookedUp: lookedUp))
         mode = .new(onDone: onDone)
+        self.showsCancel = showsCancel
     }
 
     init(editing product: Product) {
         _model = State(initialValue: ProductFormModel(draft: ProductDraft(product)))
         mode = .edit(product)
+        showsCancel = true
     }
 
     private var isEditing: Bool {
@@ -239,8 +261,7 @@ struct ProductForm: View {
         .navigationTitle(isEditing ? "Edit product" : "New product")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if isEditing {
-                // Editing is a sheet; a new product is pushed from the picker and goes back with the back button.
+            if showsCancel {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             }
             ToolbarItem(placement: .confirmationAction) {

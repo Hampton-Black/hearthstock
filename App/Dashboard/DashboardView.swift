@@ -68,7 +68,7 @@ struct DashboardView: View {
             await model.subscribe(session.services, siteID: session.siteID)
         }
         .onChange(of: today.date, initial: true) { _, day in model?.setToday(day) }
-        .sheet(isPresented: $adding) { AddLotSheet() }
+        .fullScreenCover(isPresented: $adding) { AddScanView() }
         .sheet(item: $fixingProducts) { list in ProductFixList(list: list) }
     }
 

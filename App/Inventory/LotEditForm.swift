@@ -59,7 +59,11 @@ struct LotEditForm: View {
                             printed, profile: profile,
                             estimate: printed.isNoPrintedDate ? estimate(months: estimateMonths) : nil)
                         if PrintedDateText.isMissing(printed, profile: profile) {
-                            Label(text, systemImage: "calendar.badge.exclamationmark").foregroundStyle(Color.hsAmber)
+                            HStack(spacing: 4) {
+                                Image(systemName: "calendar.badge.exclamationmark")
+                                Text(text)
+                            }
+                            .foregroundStyle(Color.hsAmber)
                         } else {
                             Text(text).foregroundStyle(Color.hsInk2)
                         }

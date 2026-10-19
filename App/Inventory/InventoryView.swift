@@ -40,7 +40,7 @@ struct InventoryView: View {
             }
             .background(Color.hsBg)
             .navigationTitle("Inventory")
-            .addItemButton()
+            .addItemButton(showsScan: true)
             .navigationDestination(for: LotID.self) { LotDetailView(lotID: $0) }
         }
         .task {

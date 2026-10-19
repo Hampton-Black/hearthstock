@@ -44,16 +44,16 @@ import Testing
         Expected(fixture: "water-40pack", name: ""),  // nothing to go on: the form asks for the name and category
         // With a net quantity.
         Expected(fixture: "campbells-soup", name: "Campbell's Cream Of Mushroom Soup, 10.5 oz",
-                 kcal: 83.3333333333333 * 2.976699928125, profile: "canned_low_acid"),
+                 kcal: 248, profile: "canned_low_acid"),  // 83.33 kcal/100 g × 297.67 g, rounded
         Expected(fixture: "barilla-penne", name: "Barilla Penne, 1 lb",  // 1 lb is a single box: count
-                 kcal: 357.142857142857 * 4.5359237, profile: "pasta_dry"),
+                 kcal: 1620, profile: "pasta_dry"),  // 357.14 × 4.5359, rounded
         Expected(fixture: "derived-rice-25lb-with-size", name: "Kings Enriched Long Grain Parboiled Rice, 25 lb",
-                 unitKind: .mass, kcal: 361.702127659574 * 4.5359237, profile: "white_rice"),
+                 unitKind: .mass, kcal: 1641, profile: "white_rice"),  // per lb, rounded
         Expected(fixture: "derived-soup-kj-only", name: "Campbell's Cream Of Mushroom Soup, 10.5 oz",
-                 kcal: 348.67 / 4.184 * 2.976699928125, profile: "canned_low_acid"),
+                 kcal: 248, profile: "canned_low_acid"),
         Expected(fixture: "derived-water-named",
                  name: "Kirkland Signature Purified Drinking Water, 40 x 16.9 fl oz", isWater: true,
-                 water: 500 / 3785.411784, profile: "bottled_water"),
+                 water: 0.132, profile: "bottled_water"),  // 500 ml, to a thousandth of a gallon
     ]
 
     @Test(arguments: expectations)
@@ -200,7 +200,7 @@ import Testing
         let (draft, filled) = typed.fillingEmptyFields(from: soup)
         #expect(filled == [.name, .calories])
         #expect(draft.name == "Campbell's Cream Of Mushroom Soup, 10.5 oz")
-        #expect(draft.kcalPerBaseUnit.map { isApproximately($0, 83.3333333333333 * 2.976699928125, tolerance: 1e-6) } == true)
+        #expect(draft.kcalPerBaseUnit == 248)
         #expect(draft.shelfLifeProfileKey == "unknown_food")  // profile, category and unit kind stay as entered
         #expect(draft.unitKind == .count)
     }
@@ -210,7 +210,7 @@ import Testing
         let typed = ProductDraft(name: "Rice", category: .food, unitKind: .mass)
         let (draft, filled) = typed.fillingEmptyFields(from: rice)
         #expect(filled == [.calories])
-        #expect(draft.kcalPerBaseUnit.map { isApproximately($0, 361.702127659574 * 4.5359237, tolerance: 1e-6) } == true)
+        #expect(draft.kcalPerBaseUnit == 1641)
     }
 
     @Test func fillingWaterGallons() throws {
@@ -218,7 +218,7 @@ import Testing
         let typed = ProductDraft(name: "Water", category: .water, unitKind: .count)
         let (draft, filled) = typed.fillingEmptyFields(from: water)
         #expect(filled == [.water])
-        #expect(draft.potableWaterGalPerBaseUnit.map { isApproximately($0, 500 / 3785.411784) } == true)
+        #expect(draft.potableWaterGalPerBaseUnit.map { isApproximately($0, 0.132) } == true)
     }
 
     @Test func notFoundGivesNoDraft() throws {

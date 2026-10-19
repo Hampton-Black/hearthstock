@@ -88,12 +88,33 @@ final class AddLotModel: RunwayInputsModel {
     /// The product ID a new draft will be saved under, so the preview and the save agree.
     private var draftProductID = ProductID()
 
-    init(services: AppServices, siteID: SiteID, today: CalendarDate) {
+    /// What a scan already decided: the product (existing, or a draft from a lookup), the location, and a note
+    /// shown above the product row. The save path is the same as for manual entry.
+    struct Preset {
+        var product: ProductChoice?
+        var locationID: LocationID?
+        var note: String?
+        /// The lookup the draft came from, so switching the unit kind can fill calories for the new unit.
+        var lookedUp: LookedUpProduct?
+    }
+
+    /// Shown above the product row ("Filled in from Open Food Facts…") until the item is saved.
+    private(set) var note: String?
+    private(set) var lookedUp: LookedUpProduct?
+
+    init(services: AppServices, siteID: SiteID, today: CalendarDate, preset: Preset? = nil) {
         self.services = services
         self.siteID = siteID
         self.today = today
         acquired = today
         lastUsedLocationID = Preferences.lastUsedLocation(siteID: siteID)
+        if let preset {
+            product = preset.product
+            locationID = preset.locationID
+            note = preset.note
+            lookedUp = preset.lookedUp
+            productChanged(from: nil)
+        }
     }
 
     func recompute() {
@@ -222,6 +243,8 @@ final class AddLotModel: RunwayInputsModel {
         packs = 1
         printed = .unset
         estimateMonths = nil
+        note = nil
+        lookedUp = nil
         packaging = .none
         opened = false
         notes = ""

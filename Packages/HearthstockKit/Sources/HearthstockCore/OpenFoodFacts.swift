@@ -145,8 +145,8 @@ public enum OpenFoodFacts {
             barcode: barcode?.rawValue,
             category: category,
             unitKind: kind,
-            kcalPerBaseUnit: category == .food ? kcalPerBaseUnit(product, unitKind: kind) : nil,
-            potableWaterGalPerBaseUnit: category == .water ? potableWaterGalPerBaseUnit(product, unitKind: kind) : nil,
+            kcalPerBaseUnit: category == .food ? suggestedKcal(product, unitKind: kind) : nil,
+            potableWaterGalPerBaseUnit: category == .water ? suggestedWaterGal(product, unitKind: kind) : nil,
             shelfLifeProfileKey: categories.profile(for: product.categoryTags, in: profiles)
                 ?? ProductDraft.defaultProfileKey(for: category))
     }
@@ -196,6 +196,16 @@ public enum OpenFoodFacts {
         }
     }
 
+    /// What a form starts with: calories rounded to whole kcal, as labels print them, and drinkable water to a
+    /// thousandth of a gallon.
+    public static func suggestedKcal(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
+        kcalPerBaseUnit(product, unitKind: unitKind)?.rounded()
+    }
+
+    public static func suggestedWaterGal(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
+        potableWaterGalPerBaseUnit(product, unitKind: unitKind).map { ($0 * 1000).rounded() / 1000 }
+    }
+
     /// Drinkable gallons per base unit for a water product: 1 per gallon, or the bottle's size per item.
     public static func potableWaterGalPerBaseUnit(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
         switch unitKind {
@@ -228,13 +238,13 @@ extension ProductDraft {
             filled.insert(.name)
         }
         if draft.category == .food, draft.kcalPerBaseUnit == nil,
-           let kcal = OpenFoodFacts.kcalPerBaseUnit(product, unitKind: draft.unitKind)
+           let kcal = OpenFoodFacts.suggestedKcal(product, unitKind: draft.unitKind)
         {
             draft.kcalPerBaseUnit = kcal
             filled.insert(.calories)
         }
         if draft.category == .water, draft.potableWaterGalPerBaseUnit == nil,
-           let gallons = OpenFoodFacts.potableWaterGalPerBaseUnit(product, unitKind: draft.unitKind)
+           let gallons = OpenFoodFacts.suggestedWaterGal(product, unitKind: draft.unitKind)
         {
             draft.potableWaterGalPerBaseUnit = gallons
             filled.insert(.water)

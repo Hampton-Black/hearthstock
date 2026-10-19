@@ -1,14 +1,26 @@
 import HearthstockCore
 import SwiftUI
 
-/// The Add sheet: one lot (and its product, if new) in one save. Opened from the "+" toolbar button.
+/// The Add sheet: one lot (and its product, if new) in one save. Opened from Add · scan, either typed in or
+/// starting from what a scan found (`preset`).
 struct AddLotSheet: View {
+    /// What to do after a save when the sheet was opened from the scanner: scan the next item, or close the scanner.
+    struct ScanHooks {
+        var scanAnother: () -> Void
+        var finish: () -> Void
+    }
+
+    var preset: AddLotModel.Preset?
+    var scanHooks: ScanHooks?
+
     @Environment(AppSession.self) private var session
     @Environment(Today.self) private var today
     @Environment(\.dismiss) private var dismiss
     @State private var model: AddLotModel?
     @State private var writeError: String?
     @State private var choosingProduct = false
+    /// A new product's draft, open in the product form for checking or changes before the save.
+    @State private var editingDraft: DraftEdit?
     @State private var choosingDate = false
     @State private var showingSaved = false
     /// The last "Save + add another" lot, shown in a banner above the fresh form.
@@ -20,10 +32,20 @@ struct AddLotSheet: View {
                 if let model {
                     FeedContent(phase: model.phase) {
                         if showingSaved, let status = model.savedStatus {
-                            SavedLotView(status: status, today: today.date) {
-                                showingSaved = false
-                            } done: {
-                                dismiss()
+                            if let scanHooks {
+                                SavedLotView(status: status, today: today.date, againTitle: "Scan another") {
+                                    dismiss()
+                                    scanHooks.scanAnother()
+                                } done: {
+                                    dismiss()
+                                    scanHooks.finish()
+                                }
+                            } else {
+                                SavedLotView(status: status, today: today.date) {
+                                    showingSaved = false
+                                } done: {
+                                    dismiss()
+                                }
                             }
                         } else if showingSaved {
                             ProgressView()
@@ -43,7 +65,8 @@ struct AddLotSheet: View {
             }
         }
         .task {
-            let model = AddLotModel(services: session.services, siteID: session.siteID, today: today.date)
+            let model = AddLotModel(
+                services: session.services, siteID: session.siteID, today: today.date, preset: preset)
             self.model = model
             await model.subscribe(session.services, siteID: session.siteID)
         }
@@ -68,9 +91,13 @@ struct AddLotSheet: View {
                 }
             }
 
-            Section("Product") {
+            Section {
                 Button {
-                    choosingProduct = true
+                    if case .new(let draft) = model.product {
+                        editingDraft = DraftEdit(draft: draft)
+                    } else {
+                        choosingProduct = true
+                    }
                 } label: {
                     if let product = model.product {
                         HStack {
@@ -86,6 +113,16 @@ struct AddLotSheet: View {
                         Label("Choose product", systemImage: "magnifyingglass")
                     }
                 }
+                if case .new = model.product {
+                    Button("Choose a different product") { choosingProduct = true }
+                        .font(.subheadline)
+                }
+            } header: {
+                Text("Product")
+            } footer: {
+                if let note = model.note {
+                    Label(note, systemImage: "info.circle")
+                }
             }
 
             if let product = model.product {
@@ -98,8 +135,11 @@ struct AddLotSheet: View {
                 } label: {
                     LabeledContent("Printed date") {
                         if PrintedDateText.isMissing(model.printed, profile: model.profile) {
-                            Label(printedText(model), systemImage: "calendar.badge.exclamationmark")
-                                .foregroundStyle(Color.hsAmber)
+                            HStack(spacing: 4) {
+                                Image(systemName: "calendar.badge.exclamationmark")
+                                Text(printedText(model))
+                            }
+                            .foregroundStyle(Color.hsAmber)
                         } else {
                             Text(printedText(model)).foregroundStyle(Color.hsInk2)
                         }
@@ -181,6 +221,13 @@ struct AddLotSheet: View {
                 }
             }
         }
+        .sheet(item: $editingDraft) { edit in
+            NavigationStack {
+                ProductForm(draft: edit.draft, lookedUp: model.lookedUp, showsCancel: true) { finished in
+                    model.product = .new(finished)
+                }
+            }
+        }
         .sheet(isPresented: $choosingDate) {
             PrintedDateSheet(
                 printed: $model.printed, estimateMonths: $model.estimateMonths, profile: model.profile,
@@ -255,10 +302,17 @@ struct AddLotSheet: View {
     }
 }
 
+/// A new product's draft being checked in the product form.
+private struct DraftEdit: Identifiable {
+    let id = UUID()
+    var draft: ProductDraft
+}
+
 /// The confirmation after Save: the new lot's state, why, and what it adds to runway.
 struct SavedLotView: View {
     let status: LotStatus
     let today: CalendarDate
+    var againTitle = "Add another"
     let addAnother: () -> Void
     let done: () -> Void
 
@@ -292,7 +346,7 @@ struct SavedLotView: View {
             .card()
             Spacer()
             HStack(spacing: 12) {
-                Button("Add another", action: addAnother).buttonStyle(PrimaryButtonStyle(role: .secondary))
+                Button(againTitle, action: addAnother).buttonStyle(PrimaryButtonStyle(role: .secondary))
                 Button("Done", action: done).buttonStyle(PrimaryButtonStyle())
             }
         }
