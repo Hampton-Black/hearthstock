@@ -36,6 +36,18 @@ struct LotEditForm: View {
         return (saved, override)
     }
 
+    /// The lot's state today if `date` were its printed date (the date sheet's live preview).
+    private func stateIfPrinted(_ date: CalendarDate) -> LotState? {
+        var (saved, _) = edited(months: estimateMonths)
+        saved.printedDate = date
+        let products = product.map { [$0] } ?? []
+        return LotStatusEvaluator.statuses(
+            for: inputs.site, lots: [saved], products: products, locations: inputs.locations, kits: inputs.kits,
+            productShelfLifeOverrides: inputs.productShelfLifeOverrides, profiles: session.services.profiles,
+            on: today.date
+        ).first?.state
+    }
+
     private func estimate(months: Int?) -> CalendarDate? {
         var (saved, override) = edited(months: months)
         saved.printedDate = nil
@@ -106,7 +118,7 @@ struct LotEditForm: View {
         .sheet(isPresented: $choosingDate) {
             PrintedDateSheet(
                 printed: $printed, estimateMonths: $estimateMonths, profile: profile, today: today.date,
-                estimate: estimate(months:))
+                estimate: estimate(months:), previewState: stateIfPrinted)
         }
         .errorAlert($writeError)
     }

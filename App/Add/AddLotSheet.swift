@@ -231,7 +231,7 @@ struct AddLotSheet: View {
         .sheet(isPresented: $choosingDate) {
             PrintedDateSheet(
                 printed: $model.printed, estimateMonths: $model.estimateMonths, profile: model.profile,
-                today: today.date, estimate: model.estimateUsableBy(months:))
+                today: today.date, estimate: model.estimateUsableBy(months:), previewState: model.stateIfPrinted)
         }
     }
 

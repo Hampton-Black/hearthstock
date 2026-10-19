@@ -171,6 +171,13 @@ final class AddLotModel: RunwayInputsModel {
         return status(of: lot, estimateMonths: months)?.evaluation?.usableBy
     }
 
+    /// The lot's state today if `date` were its printed date (the date sheet's live preview).
+    func stateIfPrinted(_ date: CalendarDate) -> LotState? {
+        guard var lot = makeLot(id: LotID()) else { return nil }
+        lot.printedDate = date
+        return status(of: lot, estimateMonths: nil)?.state
+    }
+
     private func status(of lot: Lot, estimateMonths: Int?) -> LotStatus? {
         guard let inputs, let productValue = previewProduct else { return nil }
         var products = inputs.products.filter { $0.id != productValue.id }

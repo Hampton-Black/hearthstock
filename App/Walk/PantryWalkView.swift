@@ -293,11 +293,23 @@ struct WalkConfirmCard: View {
             printed: Binding(get: { model.card?.printed ?? .unset }, set: { model.card?.printed = $0 }),
             estimateMonths: Binding(get: { model.card?.estimateMonths }, set: { model.card?.estimateMonths = $0 }),
             profile: model.profile(for: card), today: model.today,
-            estimate: { months in estimate(card, months: months) })
+            estimate: { months in estimate(card, months: months) },
+            previewState: { date in stateIfPrinted(card, date) })
+    }
+
+    private func stateIfPrinted(_ card: PantryWalkModel.Card, _ date: CalendarDate) -> LotState? {
+        evaluate(card, printed: date, noPrintedDate: false, months: nil)?.state
     }
 
     /// The estimated usable-by date for this card's lot marked "no printed date".
     private func estimate(_ card: PantryWalkModel.Card, months: Int?) -> CalendarDate? {
+        evaluate(card, printed: nil, noPrintedDate: true, months: months)?.evaluation?.usableBy
+    }
+
+    /// This card's lot as it would be saved, evaluated today.
+    private func evaluate(
+        _ card: PantryWalkModel.Card, printed: CalendarDate?, noPrintedDate: Bool, months: Int?
+    ) -> LotStatus? {
         guard let inputs = model.inputs else { return nil }
         let product: Product
         switch card.subject {
@@ -307,15 +319,15 @@ struct WalkConfirmCard: View {
             product = built
         }
         let lot = Lot(
-            productID: product.id, quantity: card.amount ?? 1, acquiredDate: model.today, noPrintedDate: true,
-            locationID: model.walk.locationID)
+            productID: product.id, quantity: card.amount ?? 1, acquiredDate: model.today, printedDate: printed,
+            noPrintedDate: noPrintedDate, locationID: model.walk.locationID)
         var products = inputs.products.filter { $0.id != product.id }
         products.append(product)
         return LotStatusEvaluator.statuses(
             for: inputs.site, lots: [lot], products: products, locations: inputs.locations, kits: inputs.kits,
             lotShelfLifeOverrides: months.map { [lot.id: ShelfLifeOverride(rotationMonths: $0)] } ?? [:],
             profiles: model.services.profiles, on: model.today
-        ).first?.evaluation?.usableBy
+        ).first
     }
 }
 

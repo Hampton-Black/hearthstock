@@ -1,5 +1,6 @@
 import HearthstockCore
 import SwiftUI
+import VisionKit
 
 /// Picks a printed date: any day past or future, a month (many packages print only "MAR 2025"), or "No date on the
 /// package", which ages the lot from an estimate (Slice 4 Decisions 1–2) whose months can be changed for this lot.
@@ -11,6 +12,8 @@ struct PrintedDateSheet: View {
     let today: CalendarDate
     /// The estimated usable-by date for a given number of months (nil: the profile's).
     let estimate: (Int?) -> CalendarDate?
+    /// The lot's state today if this were its printed date, for the live preview.
+    var previewState: ((CalendarDate) -> LotState?)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var noDate: Bool
@@ -19,16 +22,21 @@ struct PrintedDateSheet: View {
     @State private var year: Int
     @State private var month: Int
     @State private var day: CalendarDate
+    @State private var scanningDate = false
+    /// Set when the date came from Live Text: a reminder that it's read, not typed.
+    @State private var scanned: DateCandidate?
 
     init(
         printed: Binding<AddLotModel.PrintedDate>, estimateMonths: Binding<Int?>, profile: ShelfLifeProfile?,
-        today: CalendarDate, estimate: @escaping (Int?) -> CalendarDate?
+        today: CalendarDate, estimate: @escaping (Int?) -> CalendarDate?,
+        previewState: ((CalendarDate) -> LotState?)? = nil
     ) {
         _printed = printed
         _estimateMonths = estimateMonths
         self.profile = profile
         self.today = today
         self.estimate = estimate
+        self.previewState = previewState
         let start = printed.wrappedValue.date ?? today
         _year = State(initialValue: start.year)
         _month = State(initialValue: start.month)
@@ -38,7 +46,12 @@ struct PrintedDateSheet: View {
         _months = State(initialValue: estimateMonths.wrappedValue ?? profile?.rotationMonths ?? 12)
     }
 
-    private static let monthNames = Calendar(identifier: .gregorian).shortMonthSymbols
+    /// "Jan"…"Dec" in the user's language. A bare Gregorian calendar has no locale and gives "M01"…"M12".
+    private static let monthNames: [String] = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = .current
+        return calendar.shortMonthSymbols
+    }()
 
     private var dateType: ShelfLifeDateType { profile?.dateType ?? .bestBy }
     /// Only dated profiles can be marked "no printed date"; honey and stored tap water don't need a date at all.
@@ -109,8 +122,34 @@ struct PrintedDateSheet: View {
         }
     }
 
+    /// The date the pickers show now.
+    private var selectedDate: CalendarDate? {
+        monthOnly ? CalendarDate(year: year, month: month, day: 1) : day
+    }
+
+    private func use(_ candidate: DateCandidate) {
+        scanned = candidate
+        monthOnly = candidate.precision == .month
+        year = candidate.date.year
+        month = candidate.date.month
+        day = candidate.date
+    }
+
     @ViewBuilder
     private var datePicker: some View {
+        if DataScannerViewController.isSupported {
+            Section {
+                Button("Scan the date", systemImage: "text.viewfinder") { scanningDate = true }
+            } footer: {
+                if let scanned {
+                    Text("Read from the package\(scanned.dateType.map { " as \($0.label.lowercased())" } ?? ""). Check it before tapping Done.")
+                }
+            }
+            .sheet(isPresented: $scanningDate) {
+                DateTextScannerSheet { candidate in use(candidate) }
+            }
+        }
+
         Section {
             Picker("Precision", selection: $monthOnly) {
                 Text("Month").tag(true)
@@ -159,6 +198,15 @@ struct PrintedDateSheet: View {
                     selection: Binding(get: { day.pickerDate }, set: { day = CalendarDate(pickerDate: $0) }),
                     displayedComponents: .date)
                     .datePickerStyle(.graphical)
+            }
+        }
+
+        if let previewState, let date = selectedDate, let state = previewState(date) {
+            Section {
+                HStack(spacing: 6) {
+                    Text("Today this is").foregroundStyle(Color.hsInk2)
+                    StateBadge(state: state)
+                }
             }
         }
     }
