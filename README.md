@@ -38,7 +38,7 @@ The work is built in slices, each a vertical piece that ends with tests green an
 
 ### Now: Slice 5, calories and categories at scan time
 
-Being planned. Open Food Facts usually knows calories per serving but rarely the package size, and often has no categories, so a scanned can tends to need its calories and shelf-life profile fixed by hand afterwards. Slice 5 fills them in at the shelf:
+Planned in [`docs/slice-5.md`](docs/slice-5.md). Open Food Facts usually knows calories per serving but rarely the package size, and often has no categories, so a scanned can tends to need its calories and shelf-life profile fixed by hand afterwards. Slice 5 fills them in at the shelf:
 
 - Calories per item from a single-serving package, from servings per container or the net weight (one question on the scan card), or by reading the Nutrition Facts panel with Live Text
 - A shelf-life profile guessed from the product name when there are no categories, shown as a guess you can change
