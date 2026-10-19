@@ -137,11 +137,10 @@ struct WalkConfirmCard: View {
     private func content(_ card: PantryWalkModel.Card) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(header(card)).font(.caption.weight(.semibold)).foregroundStyle(Color.hsInk2)
-            switch card.subject {
-            case .known, .new(_, found: true, _):
-                Text(card.name.isEmpty ? "Unnamed product" : card.name).font(.title3.bold()).foregroundStyle(Color.hsInk)
-            case .new(_, found: false, _):
+            if card.asksForBasics {
                 newProductFields(card)
+            } else {
+                Text(card.name).font(.title3.bold()).foregroundStyle(Color.hsInk)
             }
             row {
                 quantity(card)

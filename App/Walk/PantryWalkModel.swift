@@ -23,6 +23,19 @@ final class PantryWalkModel: RunwayInputsModel {
         var estimateMonths: Int?
         /// "Different date" opens the card straight into the date sheet.
         var opensDateSheet = false
+        /// Name, category and calories are asked for on the card: not found, or found with no name (Open Food
+        /// Facts had little but the barcode). Set when the card opens, so typing a name doesn't change the layout.
+        let asksForBasics: Bool
+
+        init(barcode: Barcode, subject: Subject) {
+            self.barcode = barcode
+            self.subject = subject
+            switch subject {
+            case .known: asksForBasics = false
+            case .new(let draft, let found, _):
+                asksForBasics = !found || draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+        }
 
         var unitKind: UnitKind {
             switch subject {
@@ -106,16 +119,16 @@ final class PantryWalkModel: RunwayInputsModel {
 
     // MARK: Scans
 
+    /// Any code this walk already added opens "Scanned again", whether the scanner reported it as a repeat or as a
+    /// new scan (a second can of the same item read after a pause, a code first seen while a card was open).
     private func handle(_ event: ScanDebouncer.Event) {
-        switch event {
-        case .scan(let code):
+        let code: Barcode = switch event {
+        case .scan(let code), .repeat(let code): code
+        }
+        if let duplicate = duplicate(for: code) {
+            self.duplicate = duplicate
+        } else {
             Task { await resolve(code) }
-        case .repeat(let code):
-            if let duplicate = duplicate(for: code) {
-                self.duplicate = duplicate
-            } else {
-                Task { await resolve(code) }
-            }
         }
     }
 
