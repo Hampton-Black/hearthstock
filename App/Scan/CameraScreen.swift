@@ -6,14 +6,16 @@ import SwiftUI
 ///
 /// Without a usable camera (simulator, older device, permission denied) the reticle is replaced by an explanation,
 /// and typing still feeds the same path.
-struct CameraScreen<Bottom: View>: View {
-    let title: String
+struct CameraScreen<Leading: View, Center: View, Trailing: View, Bottom: View>: View {
     let scanner: ScannerModel
     /// Hidden while a card covers the middle of the screen.
     var showsReticle = true
+    @ViewBuilder var leading: () -> Leading
+    @ViewBuilder var center: () -> Center
+    /// After the torch button.
+    @ViewBuilder var trailing: () -> Trailing
     @ViewBuilder var bottom: () -> Bottom
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @State private var torch = Torch()
     @State private var access = CameraAccess.current
@@ -29,7 +31,7 @@ struct CameraScreen<Bottom: View>: View {
             VStack(spacing: 16) {
                 topBar
                 Spacer(minLength: 0)
-                if showsReticle { center }
+                if showsReticle { middle }
                 Spacer(minLength: 0)
                 bottom()
             }
@@ -54,24 +56,25 @@ struct CameraScreen<Bottom: View>: View {
     }
 
     private var topBar: some View {
-        HStack {
-            CameraButton(symbol: "xmark", label: "Close") { dismiss() }
-            Spacer()
-            Text(title).font(.headline)
-            Spacer()
+        HStack(spacing: 12) {
+            leading()
+            Spacer(minLength: 0)
+            center()
+            Spacer(minLength: 0)
             if access == .ready && torch.isAvailable {
                 CameraButton(
                     symbol: torch.isOn ? "flashlight.on.fill" : "flashlight.off.fill",
                     label: torch.isOn ? "Turn off light" : "Turn on light"
                 ) { torch.toggle() }
-            } else {
+            } else if Trailing.self == EmptyView.self {
                 Color.clear.frame(width: 44, height: 44)
             }
+            trailing()
         }
     }
 
     @ViewBuilder
-    private var center: some View {
+    private var middle: some View {
         VStack(spacing: 20) {
             switch access {
             case .ready:
@@ -100,6 +103,25 @@ struct CameraScreen<Bottom: View>: View {
             Button("Type a barcode", systemImage: "keyboard") { typing = true }
                 .buttonStyle(CameraPillStyle(prominent: access != .ready))
         }
+    }
+}
+
+extension CameraScreen where Leading == CameraCloseButton, Center == Text, Trailing == EmptyView {
+    /// Close, a title and the torch across the top.
+    init(title: String, scanner: ScannerModel, showsReticle: Bool = true, @ViewBuilder bottom: @escaping () -> Bottom) {
+        self.init(
+            scanner: scanner, showsReticle: showsReticle,
+            leading: { CameraCloseButton() }, center: { Text(title).font(.headline) }, trailing: { EmptyView() },
+            bottom: bottom)
+    }
+}
+
+/// Closes the camera screen it's on.
+struct CameraCloseButton: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        CameraButton(symbol: "xmark", label: "Close") { dismiss() }
     }
 }
 

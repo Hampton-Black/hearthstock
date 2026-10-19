@@ -156,10 +156,12 @@ struct AddScanView: View {
     @Environment(Today.self) private var today
     @Environment(\.dismiss) private var dismiss
     @State private var model: ScanFlowModel?
+    @State private var walking: WalkStart?
 
     var body: some View {
         Group {
-            if let model {
+            // While a walk runs over this screen, its camera stops: one scanner at a time.
+            if let model, walking == nil {
                 content(model)
             } else {
                 Color.hsCameraBg.ignoresSafeArea()
@@ -171,6 +173,14 @@ struct AddScanView: View {
             await model.subscribe(session.services, siteID: session.siteID)
         }
         .onChange(of: today.date) { _, day in model?.setToday(day) }
+        .fullScreenCover(item: $walking) { start in
+            PantryWalkView(start: start) { next in
+                walking = WalkStart(locationID: next)
+            } finish: {
+                walking = nil
+                dismiss()
+            }
+        }
     }
 
     @ViewBuilder
@@ -194,10 +204,19 @@ struct AddScanView: View {
                         .transition(.opacity)
                 }
                 locationChip(model)
-                Button { model.typeItIn() } label: {
-                    Label("Type it in", systemImage: "pencil").frame(maxWidth: .infinity)
+                HStack(spacing: 12) {
+                    Button { model.typeItIn() } label: {
+                        Label("Type it in", systemImage: "pencil").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(CameraPillStyle(prominent: true))
+                    Button {
+                        if let location = model.locationID { walking = WalkStart(locationID: location) }
+                    } label: {
+                        Label("Pantry walk", systemImage: "viewfinder").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(CameraPillStyle())
+                    .disabled(model.locationID == nil)
                 }
-                .buttonStyle(CameraPillStyle(prominent: true))
             }
         }
         .sheet(item: $model.step, onDismiss: { model.stepClosed() }) { step in

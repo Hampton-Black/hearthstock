@@ -141,9 +141,10 @@ struct InventoryView: View {
                 } label: {
                     Label {
                         HStack(spacing: 6) {
-                            Text("Needs a date")
+                            Text("Needs a date").lineLimit(1)
                             Image(systemName: "xmark").font(.caption.weight(.bold))
                         }
+                        .fixedSize()
                     } icon: {
                         Image(systemName: "calendar.badge.exclamationmark")
                     }
