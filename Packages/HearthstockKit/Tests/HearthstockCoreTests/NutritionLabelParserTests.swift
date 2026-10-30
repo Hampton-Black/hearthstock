@@ -152,6 +152,36 @@ import Testing
         #expect(reading.caloriesPerContainer == nil)
     }
 
+    @Test func aHalfPackageColumnIsNotTheServing() {
+        // Top Ramen: the serving is one package, and Live Text may read the two-line headings row by row.
+        for headings in ["Per 1/2\nPackage\nPer\nServing", "Per 1/2 Per\nPackage Serving"] {
+            let reading = NutritionLabelParser.read("Serving size 1 package (85g)\n\(headings)\nCalories 190 380")
+            #expect(reading.caloriesPerServing == 380)
+            #expect(reading.caloriesPerContainer == nil)
+        }
+    }
+
+    @Test(arguments: [
+        ("Per 2.5oz dry mix\nPer 1 cup prepared*\nCalories 250 280", 250.0),
+        ("Per 1 cup prepared\nPer 2.5oz dry mix\nCalories 280 250", 250.0),
+    ])
+    func asPackagedBeatsAsPrepared(text: String, kcal: Double) {
+        let reading = NutritionLabelParser.read(text)
+        #expect(reading.caloriesPerServing == kcal)
+        #expect(reading.caloriesPerContainer == nil)
+    }
+
+    @Test func linearPanelWithCommas() {
+        let reading = NutritionLabelParser.read("Nutrition Facts Serv. size: 1 Bar (50g)\nAmount per serving: Calories 200, Total Fat 6g (8% DV)")
+        #expect(reading.caloriesPerServing == 200)
+        #expect(reading.servingSize == "1 Bar")
+        #expect(reading.servingQuantity == Quantity(value: 50, unit: .gram))
+    }
+
+    @Test func caloriesPerServingHeading() {
+        #expect(NutritionLabelParser.read("Calories\nper serving\n210\nAmount/serving").caloriesPerServing == 210)
+    }
+
     @Test(arguments: [("3", 3.0), ("3.5", 3.5), (".5", 0.5), ("1/2", 0.5), ("3 1/2", 3.5)])
     func numbers(text: String, value: Double) {
         #expect(NutritionLabelParser.parseNumber(text).map { isApproximately($0, value) } == true)

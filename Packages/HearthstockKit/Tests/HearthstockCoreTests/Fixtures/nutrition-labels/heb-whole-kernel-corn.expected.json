@@ -1,0 +1,7 @@
+{
+  "caloriesPerServing": 80,
+  "servingsPerContainer": 3.5,
+  "servingsAreApproximate": true,
+  "servingSize": "1/2 cup",
+  "servingQuantity": { "value": 125, "unit": "g" }
+}

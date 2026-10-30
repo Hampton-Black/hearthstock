@@ -1,0 +1,7 @@
+{
+  "caloriesPerServing": 250,
+  "servingsPerContainer": 2,
+  "servingsAreApproximate": true,
+  "servingSize": "2.5oz",
+  "servingQuantity": { "value": 70, "unit": "g" }
+}

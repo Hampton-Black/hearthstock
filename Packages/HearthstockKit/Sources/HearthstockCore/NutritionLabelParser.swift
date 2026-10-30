@@ -81,23 +81,71 @@ public enum NutritionLabelParser {
         return nil
     }
 
-    /// "Calories 80", with a second number on dual-column panels. Not "Calories from Fat", not "Calories: 2,000".
-    private static let caloriesPattern = regex(#"\bcalories\s*(\d{1,3}(?:,\d{3})+|\d+)(?![\d,.%])(?:\s+(\d{1,3}(?:,\d{3})+|\d+)(?![\d,.%]))?"#)
+    /// "Calories 80" or "Calories per serving 210", with a second number on dual-column panels. Not "Calories from
+    /// Fat", not "Calories: 2,000". A trailing comma ("Calories 200, Total Fat 6g") ends the number.
+    private static let calorieNumber = #"(\d{1,3}(?:,\d{3})+|\d+)(?![\d%]|[,.]\d)"#
+    private static let caloriesPattern = regex(#"\bcalories(?:\s+per\s+serving)?\s*"# + calorieNumber + #"(?:\s+"# + calorieNumber + #")?"#)
     /// A per-container column heading ("Per serving Per container"), not "2 servings per container" or "1 serving
     /// per container".
     private static let perContainerHeading = regex(#"(?<!servings )(?<!\d serving )\bper\s+(?:container|package|pkg\b|can\b|bottle\b)"#)
+    /// The start of a column heading: "Per serving", "Per 1/2 Package", "Per 2.5oz dry mix". Not "servings per
+    /// container" and not the single-column "Amount per serving".
+    private static let headingStart = regex(#"(?<!servings )(?<!serving )(?<!amount )(?<!amount/)\bper\b"#)
 
-    static func calories(in text: String) -> (perServing: Double?, perContainer: Double?) {
-        guard let groups = firstMatch(caloriesPattern, in: text),
-              let first = groups[1].flatMap(parseWhole)
-        else { return (nil, nil) }
-        let dualColumn = firstMatch(perContainerHeading, in: text) != nil
-        let second = dualColumn ? groups[2].flatMap(parseWhole) : nil
-        return (first, second)
+    /// What a dual-column heading measures.
+    enum Column: Equatable {
+        case serving, container, prepared, other
+
+        init(heading: String) {
+            let heading = heading.lowercased()
+            if heading.contains("prepared") {
+                self = .prepared
+            } else if heading.range(of: #"\bserving"#, options: .regularExpression) != nil {
+                self = .serving
+            } else if heading.range(of: #"^per\s+(?:container|package|pkg|can|bottle|box|bag)\b"#,
+                                    options: .regularExpression) != nil {
+                self = .container
+            } else {
+                self = .other
+            }
+        }
     }
 
-    private static let servingWithMetric = regex(#"serving\s+size\s*:?\s*([^()]{0,40}?)\s*\(\s*(\d*\.?\d+)\s*(g|ml|l)\b"#)
-    private static let servingPlain = regex(#"serving\s+size\s*:?\s*(.{1,30}?)(?=\s+(?:amount|servings?|calories|per|nutrition|%)\b|$)"#)
+    static func calories(in text: String) -> (perServing: Double?, perContainer: Double?) {
+        let ns = text as NSString
+        guard let match = caloriesPattern.firstMatch(in: text, range: NSRange(location: 0, length: ns.length)),
+              let first = group(1, of: match, in: ns).flatMap(parseWhole)
+        else { return (nil, nil) }
+        guard let second = group(2, of: match, in: ns).flatMap(parseWhole) else { return (first, nil) }
+
+        let headings = columnHeadings(before: match.range.location, in: ns)
+        if headings.count == 2 {
+            let columns = headings.map(Column.init(heading:))
+            let values = [first, second]
+            let container = columns.firstIndex(of: .container).map { values[$0] }
+            // The serving column, else the first one that isn't "as prepared" (which adds what isn't in the box).
+            let serving = columns.firstIndex(of: .serving) ?? columns.firstIndex { $0 != .prepared && $0 != .container }
+            return (serving.map { values[$0] } ?? (container == nil ? first : nil), container)
+        }
+        let dualColumn = firstMatch(perContainerHeading, in: text) != nil
+        return (first, dualColumn ? second : nil)
+    }
+
+    /// The last two column headings just before "Calories", in reading order. Each runs from its "Per" to the next
+    /// heading or to "Calories", and a heading longer than a short phrase isn't a heading.
+    private static func columnHeadings(before end: Int, in text: NSString) -> [String] {
+        let starts = headingStart.matches(in: text as String, range: NSRange(location: 0, length: end))
+            .map(\.range.location)
+        let bounds = zip(starts, starts.dropFirst() + [end])
+        let headings = bounds.map { text.substring(with: NSRange(location: $0, length: $1 - $0)) }
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        let lastTwo = Array(headings.suffix(2))
+        guard lastTwo.count == 2, lastTwo.allSatisfy({ $0.count <= 30 }) else { return [] }
+        return lastTwo
+    }
+
+    private static let servingWithMetric = regex(#"serv(?:ing|\.)?\s*size\s*:?\s*([^()]{0,40}?)\s*\(\s*(\d*\.?\d+)\s*(g|ml|l)\b"#)
+    private static let servingPlain = regex(#"serv(?:ing|\.)?\s*size\s*:?\s*(.{1,30}?)(?=\s+(?:amount|servings?|calories|per|nutrition|%)\b|$)"#)
 
     static func servingSize(in text: String) -> (String?, Quantity?) {
         if let groups = firstMatch(servingWithMetric, in: text) {
@@ -177,6 +225,11 @@ public enum NutritionLabelParser {
             }
         }
         return total.isFinite ? total : nil
+    }
+
+    private static func group(_ index: Int, of match: NSTextCheckingResult, in text: NSString) -> String? {
+        let range = match.range(at: index)
+        return range.location == NSNotFound ? nil : text.substring(with: range)
     }
 
     /// "1,630" → 1630.

@@ -27,3 +27,12 @@ servings, and two to four more from the pantry.
 
 | Panel | Photo taken | What it covers |
 | --- | --- | --- |
+| `heb-whole-kernel-corn` | Oct 30, 2026 | "about 3.5" servings, Calories in large type, no net weight on this side |
+| `top-ramen-6-pack` | Oct 30, 2026 | Dual column "Per 1/2 Package" / "Per Serving": the serving column wins |
+| `kraft-mac-and-cheese` | Oct 30, 2026 | Dual column dry mix / prepared: as packaged wins; serving size with "/ about 1/2 box" |
+| `parboiled-rice-25-lb` | Oct 30, 2026 | Bulk bag, "NET WT 25 LBS", 241 servings |
+| `pure-protein-bar` | Oct 30, 2026 | Linear panel: "Serv. size:", "Calories 200," with a comma |
+| `fitcrunch-bar` | Oct 30, 2026 | Single serving, "Calories per serving 210", cut-off title |
+
+The `.txt` files are typed from Hampton's photos in the line order Live Text usually returns, not captured from
+Live Text itself; the device walk-through checks the real thing.
