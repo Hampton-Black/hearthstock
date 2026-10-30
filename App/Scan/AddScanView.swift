@@ -90,7 +90,8 @@ final class ScanFlowModel: RunwayInputsModel {
             case .found(let product):
                 lookedUp = product
                 lookup = .found(OpenFoodFacts.draft(
-                    from: product, barcode: code, categories: services.offCategories, profiles: services.profiles))
+                    from: product, barcode: code, categories: services.offCategories,
+                    names: services.nameProfiles, profiles: services.profiles))
             case .notFound: lookup = .notFound
             case .unavailable(let reason): lookup = .unavailable(reason)
             }

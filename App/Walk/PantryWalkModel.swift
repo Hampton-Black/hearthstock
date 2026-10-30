@@ -156,7 +156,8 @@ final class PantryWalkModel: RunwayInputsModel {
             let lookup: ScanLookup = switch result {
             case .found(let product):
                 .found(OpenFoodFacts.draft(
-                    from: product, barcode: code, categories: services.offCategories, profiles: services.profiles))
+                    from: product, barcode: code, categories: services.offCategories,
+                    names: services.nameProfiles, profiles: services.profiles))
             case .notFound: .notFound
             case .unavailable(let reason): .unavailable(reason)
             }

@@ -148,10 +148,15 @@ public enum OpenFoodFacts {
     // MARK: Drafts
 
     /// The add form's starting point for a found product. Everything stays editable before the first save.
+    ///
+    /// The profile comes from the categories, then from the name when they say nothing (Slice 5 Decision 6), then
+    /// the category default.
     public static func draft(
-        from product: LookedUpProduct, barcode: Barcode?, categories: OFFCategoryMap, profiles: ShelfLifeProfileTable
+        from product: LookedUpProduct, barcode: Barcode?, categories: OFFCategoryMap, names: NameProfileGuesser,
+        profiles: ShelfLifeProfileTable
     ) -> ProductDraft {
-        let category: Category = categories.isWater(product.categoryTags) ? .water : .food
+        let guess = profileGuess(product, categories: categories, names: names, profiles: profiles)
+        let category: Category = categories.isWater(product.categoryTags) ? .water : guess?.category ?? .food
         let kind = unitKind(product)
         return ProductDraft(
             name: name(product),
@@ -160,8 +165,21 @@ public enum OpenFoodFacts {
             unitKind: kind,
             kcalPerBaseUnit: category == .food ? suggestedKcal(product, unitKind: kind) : nil,
             potableWaterGalPerBaseUnit: category == .water ? suggestedWaterGal(product, unitKind: kind) : nil,
-            shelfLifeProfileKey: categories.profile(for: product.categoryTags, in: profiles)
+            shelfLifeProfileKey: categories.profile(for: product.categoryTags, in: profiles) ?? guess?.profile
                 ?? ProductDraft.defaultProfileKey(for: category))
+    }
+
+    /// The name's guess when the categories give neither water nor a profile, else nil: what the draft's profile
+    /// was "guessed from the name", for the card and form to say so.
+    public static func profileGuess(
+        _ product: LookedUpProduct, categories: OFFCategoryMap, names: NameProfileGuesser,
+        profiles: ShelfLifeProfileTable
+    ) -> NameProfileGuesser.Guess? {
+        guard !categories.isWater(product.categoryTags),
+              categories.profile(for: product.categoryTags, in: profiles) == nil,
+              let name = product.name
+        else { return nil }
+        return names.guess(name: name, quantityLabel: product.quantityLabel, in: profiles)
     }
 
     /// Brand, product name and the label's size, because different sizes are different products: "Campbell's Cream
