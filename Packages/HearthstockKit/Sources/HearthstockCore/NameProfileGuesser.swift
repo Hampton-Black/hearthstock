@@ -4,7 +4,8 @@ import Foundation
 /// (Slice 5 Decision 6). The keywords are bundled data, `name-keyword-profiles.json`, editable like the shelf-life
 /// table. A guess is only ever a starting point the person sees and can change.
 public struct NameProfileGuesser: Hashable, Sendable {
-    /// One keyword or phrase. With no profile, it only stops the shorter keywords inside it from matching.
+    /// One keyword or phrase. With no profile, it only stops the shorter keywords inside it from matching. A veto
+    /// stops any guess at all: "corn flakes" stays Other food, the conservative default.
     public struct Keyword: Hashable, Sendable, Codable {
         public var phrase: String
         public var profile: ShelfLifeProfileKey?
@@ -12,14 +13,17 @@ public struct NameProfileGuesser: Hashable, Sendable {
         public var category: Category?
         /// The name or the size must also say "oz" or "can".
         public var needsCanCue: Bool?
+        public var vetoes: Bool?
 
         public init(
-            phrase: String, profile: ShelfLifeProfileKey?, category: Category? = nil, needsCanCue: Bool? = nil
+            phrase: String, profile: ShelfLifeProfileKey?, category: Category? = nil, needsCanCue: Bool? = nil,
+            vetoes: Bool? = nil
         ) {
             self.phrase = phrase
             self.profile = profile
             self.category = category
             self.needsCanCue = needsCanCue
+            self.vetoes = vetoes
         }
     }
 
@@ -97,6 +101,7 @@ public struct NameProfileGuesser: Hashable, Sendable {
                 // Used up: a shorter keyword can't match these words again.
                 for offset in 0..<phrase.count { words[index + offset] = "" }
                 index += phrase.count
+                if keyword.vetoes == true { return nil }
                 if keyword.needsCanCue == true, !hasCanCue { continue }
                 if let key = keyword.profile, let profile = table[key] { matches.append((keyword, profile)) }
             }

@@ -179,7 +179,10 @@ public enum OpenFoodFacts {
               categories.profile(for: product.categoryTags, in: profiles) == nil,
               let name = product.name
         else { return nil }
-        return names.guess(name: name, quantityLabel: product.quantityLabel, in: profiles)
+        let guess = names.guess(name: name, quantityLabel: product.quantityLabel, in: profiles)
+        // Something with calories isn't water, whatever its name says ("Water Crackers", "Coconut Water").
+        let hasCalories = (product.kcalPer100 ?? 0) > 0 || (product.kcalPerServing ?? 0) > 0
+        return guess?.category == .water && hasCalories ? nil : guess
     }
 
     /// Brand, product name and the label's size, because different sizes are different products: "Campbell's Cream

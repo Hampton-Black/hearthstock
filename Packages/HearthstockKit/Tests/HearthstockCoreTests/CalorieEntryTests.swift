@@ -214,7 +214,7 @@ import Testing
         var guessing = NameGuessing()
         for (name, profile) in [
             ("B", "unknown_food"), ("Brown", "unknown_food"), ("Brown rice", "brown_rice"),
-            ("Brown rice cakes", "brown_rice"), ("Crackers", "unknown_food"), ("Corn", "canned_low_acid"),
+            ("Brown rice cakes", "unknown_food"), ("Crackers", "unknown_food"), ("Corn", "canned_low_acid"),
         ] as [(String, ShelfLifeProfileKey)] {
             draft.name = name
             guessing.nameChanged(&draft, guesser: Self.names, profiles: Self.profiles)
@@ -320,5 +320,83 @@ import Testing
         #expect(merged.servingSize == "1/2 cup")
         #expect(merged.netWeight == Quantity(value: 15.25, unit: .ounce))
         #expect(first.merging(NutritionReading()) == first)
+    }
+}
+
+/// The Slice 5 review's fixes.
+@Suite struct CalorieEntryReviewTests {
+    static let corn = LookedUpProduct(name: "Corn", kcalPer100: 64, kcalPerServing: 80, servingLabel: "0.5 cup (125 g)")
+    static let profiles = try! ShelfLifeProfileTable.bundledDefaults()
+    static let categories = try! OFFCategoryMap.bundled()
+    static let names = try! NameProfileGuesser.bundled()
+
+    static func draft(_ product: LookedUpProduct) -> ProductDraft {
+        OpenFoodFacts.draft(from: product, barcode: nil, categories: categories, names: names, profiles: profiles)
+    }
+
+    @Test func aPartialReadingIsFinishedWithTheLookup() {
+        var servingsOnly = CalorieEntry(lookedUp: Self.corn)
+        servingsOnly.label = NutritionReading(servingsPerContainer: 3.5)
+        #expect(servingsOnly.kcal(unitKind: .count)?.value == 280)
+
+        var netOnly = CalorieEntry(lookedUp: Self.corn)
+        netOnly.label = NutritionReading(netWeight: Quantity(value: 100, unit: .gram))
+        #expect(netOnly.kcal(unitKind: .count)?.value == 64)
+        #expect(netOnly.kcal(unitKind: .count)?.origin == .filled(.label))
+    }
+
+    @Test func aReadingWithNothingToFinishItStaysEmpty() {
+        var entry = CalorieEntry()
+        entry.label = NutritionReading(servingsPerContainer: 3.5)
+        #expect(entry.kcal(unitKind: .count) == nil)
+    }
+
+    @Test func usingALabelReplacesTheAnswers() {
+        var entry = CalorieEntry(lookedUp: Self.corn)
+        entry.servings = 3
+        entry.typedKcal = 300
+        entry.useLabel(NutritionReading(caloriesPerServing: 80, servingsPerContainer: 3.5))
+        #expect(entry.kcal(unitKind: .count)?.value == 280)
+    }
+
+    @Test func clearedCaloriesStayEmptyUntilAnswered() {
+        let bar = LookedUpProduct(name: "Bar", kcalPerServing: 190, servingLabel: "1 bar (50 g)")
+        var entry = NewProductEntry(draft: Self.draft(bar), amount: 1, lookedUp: bar)
+        var edited = entry.draft
+        edited.kcalPerBaseUnit = nil
+        entry.adopt(edited)
+        #expect(entry.draft.kcalPerBaseUnit == nil)
+        #expect(entry.calories.kcal(unitKind: .count) == nil)
+        entry.updateCalories { $0.typedKcal = 200 }
+        #expect(entry.draft.kcalPerBaseUnit == 200)
+    }
+
+    @Test func aSwitchPutBackByHandStaysBack() {
+        let rice = LookedUpProduct(name: "Rice", kcalPer100: 362, kcalPerServing: 170)
+        var entry = NewProductEntry(draft: Self.draft(rice), amount: 1, lookedUp: rice)
+        entry.updateCalories {
+            $0.usesNetWeight = true
+            $0.netWeight = Quantity(value: 25, unit: .pound)
+        }
+        #expect(entry.draft.unitKind == .mass)
+        var back = entry.draft
+        back.unitKind = .count
+        entry.adopt(back)
+        #expect(entry.amount == 1)
+        entry.updateCalories { $0.servings = 2 }
+        #expect(entry.draft.unitKind == .count)
+        #expect(entry.amount == 1)
+    }
+
+    @Test(arguments: ["Corn Flakes, 12 oz", "Chicken Nuggets, 32 oz", "Rice Krispies", "Frozen Corn", "Water Crackers"])
+    func notEverythingNamedLikeACanIsOne(name: String) {
+        #expect(Self.names.guess(name: name, in: Self.profiles) == nil)
+    }
+
+    @Test func somethingWithCaloriesIsntWater() {
+        let drink = LookedUpProduct(name: "Coconut Water", kcalPer100: 19)
+        let draft = Self.draft(drink)
+        #expect(draft.category == .food)
+        #expect(draft.kcalPerBaseUnit == nil || draft.kcalPerBaseUnit! > 0)
     }
 }

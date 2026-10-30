@@ -1,5 +1,5 @@
 {
-  "comment": "Words in a product's name mapped to shelf-life profile keys, for products whose Open Food Facts categories (or lack of them) say nothing. Matching ignores case and accents and needs whole words. Longer phrases are matched first and use up their words, so 'brown rice' never also matches 'rice'. A phrase with no profile only stops the shorter keywords inside it from matching ('honey roasted' isn't honey). needsCanCue: the name or size must also say oz or can. category: water makes the product Water; a food match always beats a water one ('tuna in water'). When several match, the profile with the shortest window wins; with none, the category default. Conservative on purpose: edit freely, every profile must exist in the shelf-life table.",
+  "comment": "Words in a product's name mapped to shelf-life profile keys, for products whose Open Food Facts categories (or lack of them) say nothing. Matching ignores case and accents and needs whole words. Longer phrases are matched first and use up their words, so 'brown rice' never also matches 'rice'. A phrase with no profile only stops the shorter keywords inside it from matching ('honey roasted' isn't honey). needsCanCue: the name or size must also say oz or can. vetoes: any match means no guess at all, so the product keeps the conservative default ('corn flakes' and 'chicken nuggets' aren't canned). category: water makes the product Water; a food match always beats a water one ('tuna in water'). When several match, the profile with the shortest window wins; with none, the category default. Conservative on purpose: edit freely, every profile must exist in the shelf-life table.",
   "keywords": [
     { "phrase": "corn", "profile": "canned_low_acid" },
     { "phrase": "beans", "profile": "canned_low_acid" },
@@ -35,6 +35,30 @@
     { "phrase": "honey graham" },
     { "phrase": "water", "profile": "bottled_water", "category": "water" },
     { "phrase": "in water" },
-    { "phrase": "water chestnuts" }
+    { "phrase": "water chestnuts" },
+    { "phrase": "frozen", "vetoes": true },
+    { "phrase": "refrigerated", "vetoes": true },
+    { "phrase": "fresh", "vetoes": true },
+    { "phrase": "flakes", "vetoes": true },
+    { "phrase": "chips", "vetoes": true },
+    { "phrase": "crackers", "vetoes": true },
+    { "phrase": "cereal", "vetoes": true },
+    { "phrase": "nuggets", "vetoes": true },
+    { "phrase": "tenders", "vetoes": true },
+    { "phrase": "strips", "vetoes": true },
+    { "phrase": "wings", "vetoes": true },
+    { "phrase": "patties", "vetoes": true },
+    { "phrase": "krispies", "vetoes": true },
+    { "phrase": "cake", "vetoes": true },
+    { "phrase": "cakes", "vetoes": true },
+    { "phrase": "cookies", "vetoes": true },
+    { "phrase": "pudding", "vetoes": true },
+    { "phrase": "ketchup", "vetoes": true },
+    { "phrase": "ramen", "vetoes": true },
+    { "phrase": "noodles", "vetoes": true },
+    { "phrase": "seasoning", "vetoes": true },
+    { "phrase": "mix", "vetoes": true },
+    { "phrase": "bar", "vetoes": true },
+    { "phrase": "bars", "vetoes": true }
   ]
 }

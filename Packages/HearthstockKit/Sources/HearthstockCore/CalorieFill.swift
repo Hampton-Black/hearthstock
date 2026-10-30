@@ -52,7 +52,7 @@ public enum CalorieFill {
             {
                 return Fill(value: value.rounded(), source: .netQuantity)
             }
-            return labelPerBaseUnit(label, unitKind: unitKind, servings: servings, netWeight: weight)
+            return labelPerBaseUnit(label, lookedUp: lookedUp, unitKind: unitKind, servings: servings, netWeight: weight)
                 .map { Fill(value: $0.rounded(), source: .label) }
         case .count:
             // (a)
@@ -74,7 +74,7 @@ public enum CalorieFill {
                 return Fill(value: (per100 * amount / 100).rounded(), source: .netWeight(kcalPer100: per100, netWeight: weight))
             }
             // (e)
-            return labelPerItem(label, servings: servings, netWeight: weight)
+            return labelPerItem(label, lookedUp: lookedUp, servings: servings, netWeight: weight)
                 .map { Fill(value: $0.rounded(), source: .label) }
         }
     }
@@ -107,18 +107,24 @@ public enum CalorieFill {
     // MARK: The label
 
     /// Calories per item from a panel: per container when printed, else per serving × servings (the panel's, then
-    /// the person's), else per serving × net weight ÷ serving amount when both are metric-comparable.
-    static func labelPerItem(_ label: NutritionReading?, servings: Double?, netWeight: Quantity?) -> Double? {
+    /// the person's), else per serving × net weight ÷ serving amount when both are metric-comparable, else kcal per
+    /// 100 × net weight. A partial reading is finished with the lookup: calories it didn't catch come from there.
+    static func labelPerItem(
+        _ label: NutritionReading?, lookedUp: LookedUpProduct? = nil, servings: Double?, netWeight: Quantity?
+    ) -> Double? {
         guard let label else { return nil }
         if let perContainer = label.caloriesPerContainer.flatMap(nonNegative) { return perContainer }
-        guard let perServing = label.caloriesPerServing.flatMap(nonNegative) else { return nil }
-        if let servings = label.servingsPerContainer.flatMap(positive) ?? servings {
+        let perServing = (label.caloriesPerServing ?? lookedUp?.kcalPerServing).flatMap(nonNegative)
+        if let perServing, let servings = label.servingsPerContainer.flatMap(positive) ?? servings {
             return perServing * servings
         }
         let net = (label.netWeight.flatMap(validAmount) ?? netWeight).flatMap(metric)
         let serving = label.servingQuantity.flatMap(validAmount).flatMap(metric)
-        if let net, let serving, net.kind == serving.kind, serving.value > 0 {
+        if let perServing, let net, let serving, net.kind == serving.kind, serving.value > 0 {
             return perServing * net.value / serving.value
+        }
+        if let per100 = lookedUp?.kcalPer100.flatMap(nonNegative), let net {
+            return per100 * net.value / 100
         }
         return nil
     }
@@ -126,17 +132,19 @@ public enum CalorieFill {
     /// Calories per lb or gal from a panel: per serving ÷ the serving's lb (or gal), else the panel's calories per
     /// item ÷ the net weight in lb (or gal), as when a bag's net weight switched it to mass (Decision 8).
     static func labelPerBaseUnit(
-        _ label: NutritionReading?, unitKind: UnitKind, servings: Double? = nil, netWeight: Quantity? = nil
+        _ label: NutritionReading?, lookedUp: LookedUpProduct? = nil, unitKind: UnitKind, servings: Double? = nil,
+        netWeight: Quantity? = nil
     ) -> Double? {
-        guard let label, let perServing = label.caloriesPerServing.flatMap(nonNegative) else { return nil }
-        if let serving = label.servingQuantity.flatMap(validAmount), serving.unit.kind == unitKind,
+        guard let label else { return nil }
+        if let perServing = label.caloriesPerServing.flatMap(nonNegative),
+           let serving = label.servingQuantity.flatMap(validAmount), serving.unit.kind == unitKind,
            let base = try? serving.inBaseUnit(), base.value > 0
         {
             return perServing / base.value
         }
         if let net = (label.netWeight.flatMap(validAmount) ?? netWeight), net.unit.kind == unitKind,
            let base = try? net.inBaseUnit(), base.value > 0,
-           let perItem = labelPerItem(label, servings: servings, netWeight: net)
+           let perItem = labelPerItem(label, lookedUp: lookedUp, servings: servings, netWeight: net)
         {
             return perItem / base.value
         }

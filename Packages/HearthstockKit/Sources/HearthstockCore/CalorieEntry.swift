@@ -8,13 +8,17 @@ import Foundation
 /// where it came from (`Origin`).
 public struct CalorieEntry: Hashable, Sendable {
     public var lookedUp: LookedUpProduct?
-    public var servings: Double?
-    public var netWeight: Quantity?
+    public var servings: Double? { didSet { kcalCleared = false } }
+    public var netWeight: Quantity? { didSet { kcalCleared = false } }
     /// The question is answered with a net weight instead of servings.
-    public var usesNetWeight = false
-    public var label: NutritionReading?
+    public var usesNetWeight = false { didSet { kcalCleared = false } }
+    public var label: NutritionReading? { didSet { kcalCleared = false } }
     /// kcal per base unit the person typed. No fill replaces it.
-    public var typedKcal: Double?
+    public var typedKcal: Double? { didSet { kcalCleared = false } }
+    /// The person emptied the calories in the product form: nothing is filled back in until they answer again.
+    public private(set) var kcalCleared = false
+    /// The person put a switched product back by hand: the net weight no longer switches it (Decision 8).
+    public private(set) var bulkSwitchDeclined = false
     /// When a net weight switched a new count product to mass or volume (Decision 8): the kind, and the item count
     /// before, to scale the amount by and to go back to.
     public private(set) var switchedUnitKind: UnitKind?
@@ -40,11 +44,22 @@ public struct CalorieEntry: Hashable, Sendable {
 
     /// Calories per base unit for `unitKind`, and where they came from; nil when nothing gives them.
     public func kcal(unitKind: UnitKind) -> (value: Double, origin: Origin)? {
+        if kcalCleared { return nil }
         if let typedKcal { return (typedKcal, .typed) }
         let fill = CalorieFill.kcalPerBaseUnit(
             lookedUp: lookedUp, unitKind: unitKind, servingsPerContainer: usesNetWeight ? nil : servings,
             netWeight: usesNetWeight ? netWeight : nil, label: label)
         return fill.map { ($0.value, .filled($0.source)) }
+    }
+
+    /// **Use this** after a label scan: a deliberate tap, so the reading replaces the typed calories and the answers
+    /// to the question.
+    public mutating func useLabel(_ reading: NutritionReading) {
+        label = reading
+        typedKcal = nil
+        servings = nil
+        netWeight = nil
+        usesNetWeight = false
     }
 
     /// The lookup has calories per serving, so "Servings per container" can answer.
@@ -84,7 +99,7 @@ public struct CalorieEntry: Hashable, Sendable {
     public mutating func apply(to draft: inout ProductDraft, amount: inout Double?) {
         guard draft.category == .food else { return }
         if let net = effectiveNetWeight, let bulk = Self.bulkUnitKind(for: net),
-           draft.unitKind == .count || switchedUnitKind != nil,
+           !bulkSwitchDeclined, draft.unitKind == .count || switchedUnitKind != nil,
            let base = try? net.inBaseUnit()
         {
             if switchedUnitKind == nil { itemsBeforeSwitch = amount ?? 1 }
@@ -113,10 +128,12 @@ extension CalorieEntry {
             switchedUnitKind = nil
             itemsBeforeSwitch = nil
             switchedPerItem = nil
+            bulkSwitchDeclined = true
         }
         guard draft.category == .food else { return }
         if draft.kcalPerBaseUnit != kcal(unitKind: draft.unitKind)?.value {
             typedKcal = draft.kcalPerBaseUnit
+            kcalCleared = draft.kcalPerBaseUnit == nil
         }
     }
 }

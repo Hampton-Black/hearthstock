@@ -65,7 +65,10 @@ public struct NewProductEntry: Hashable, Sendable {
         if edited.shelfLifeProfileKey != draft.shelfLifeProfileKey {
             naming.picked(edited.shelfLifeProfileKey, in: &draft)
         }
+        let itemsBefore = calories.switchedUnitKind == nil ? nil : calories.itemsBeforeSwitch
         calories.adopt(edited)
         draft = edited
+        // Put back to items by hand: the amount goes back too.
+        if let itemsBefore, calories.switchedUnitKind == nil, edited.unitKind == .count { amount = itemsBefore }
     }
 }
