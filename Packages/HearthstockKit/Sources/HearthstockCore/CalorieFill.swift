@@ -52,7 +52,7 @@ public enum CalorieFill {
             {
                 return Fill(value: value.rounded(), source: .netQuantity)
             }
-            return labelPerBaseUnit(label, unitKind: unitKind)
+            return labelPerBaseUnit(label, unitKind: unitKind, servings: servings, netWeight: weight)
                 .map { Fill(value: $0.rounded(), source: .label) }
         case .count:
             // (a)
@@ -123,13 +123,24 @@ public enum CalorieFill {
         return nil
     }
 
-    /// Calories per lb or gal from a panel: per serving ÷ the serving's grams (or ml) × grams per lb (or ml per gal).
-    static func labelPerBaseUnit(_ label: NutritionReading?, unitKind: UnitKind) -> Double? {
-        guard let label, let perServing = label.caloriesPerServing.flatMap(nonNegative),
-              let serving = label.servingQuantity.flatMap(validAmount), serving.unit.kind == unitKind,
-              let base = try? serving.inBaseUnit(), base.value > 0
-        else { return nil }
-        return perServing / base.value
+    /// Calories per lb or gal from a panel: per serving ÷ the serving's lb (or gal), else the panel's calories per
+    /// item ÷ the net weight in lb (or gal), as when a bag's net weight switched it to mass (Decision 8).
+    static func labelPerBaseUnit(
+        _ label: NutritionReading?, unitKind: UnitKind, servings: Double? = nil, netWeight: Quantity? = nil
+    ) -> Double? {
+        guard let label, let perServing = label.caloriesPerServing.flatMap(nonNegative) else { return nil }
+        if let serving = label.servingQuantity.flatMap(validAmount), serving.unit.kind == unitKind,
+           let base = try? serving.inBaseUnit(), base.value > 0
+        {
+            return perServing / base.value
+        }
+        if let net = (label.netWeight.flatMap(validAmount) ?? netWeight), net.unit.kind == unitKind,
+           let base = try? net.inBaseUnit(), base.value > 0,
+           let perItem = labelPerItem(label, servings: servings, netWeight: net)
+        {
+            return perItem / base.value
+        }
+        return nil
     }
 
     // MARK: Pieces
