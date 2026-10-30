@@ -72,16 +72,10 @@ struct ScanNotFoundForm: View {
             .sheet(isPresented: $scanningLabel) {
                 NutritionLabelScannerSheet { reading in
                     var preview = entry
-                    preview.updateCalories {
-                        $0.label = reading
-                        $0.typedKcal = nil
-                    }
+                    preview.updateCalories { $0.useLabel(reading) }
                     return preview.draft.kcalPerBaseUnit.map { (kcal: $0, unitKind: preview.draft.unitKind) }
                 } onUse: { reading in
-                    entry.updateCalories {
-                        $0.label = reading
-                        $0.typedKcal = nil
-                    }
+                    entry.updateCalories { $0.useLabel(reading) }
                 }
             }
             .navigationTitle("Not found")

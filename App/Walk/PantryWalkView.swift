@@ -114,6 +114,8 @@ struct WalkConfirmCard: View {
     let model: PantryWalkModel
     @State private var choosingDate = false
     @State private var scanningLabel = false
+    @State private var cardHeight: CGFloat = .infinity
+    @State private var keyboardUp = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Side by side, or stacked at accessibility text sizes (design §7).
@@ -125,8 +127,32 @@ struct WalkConfirmCard: View {
 
     var body: some View {
         if let card = model.card {
-            content(card)
+            // A tall card (a bulk item's note, or the keyboard up) scrolls inside the room it has, so Add stays
+            // reachable. The number pad has no key to close it.
+            VStack(alignment: .trailing, spacing: 8) {
+                if keyboardUp {
+                    Button("Hide keyboard") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(CameraPillStyle(prominent: true))
+                }
+                ScrollView {
+                    content(card)
+                        .onGeometryChange(for: CGFloat.self, of: \.size.height) { cardHeight = $0 }
+                }
+                .frame(maxHeight: cardHeight)
+                .scrollBounceBehavior(.basedOnSize)
+                .scrollDismissesKeyboard(.interactively)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            }
                 .environment(\.colorScheme, .light)
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                    keyboardUp = true
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                    keyboardUp = false
+                }
                 .sheet(isPresented: $choosingDate) { dateSheet(card) }
                 .sheet(isPresented: $scanningLabel) { labelSheet }
                 .task(id: card.id) {
@@ -238,16 +264,10 @@ struct WalkConfirmCard: View {
     private var labelSheet: some View {
         NutritionLabelScannerSheet { reading in
             guard var entry = model.card?.entry else { return nil }
-            entry.updateCalories {
-                $0.label = reading
-                $0.typedKcal = nil
-            }
+            entry.updateCalories { $0.useLabel(reading) }
             return entry.draft.kcalPerBaseUnit.map { (kcal: $0, unitKind: entry.draft.unitKind) }
         } onUse: { reading in
-            model.updateCardCalories {
-                $0.label = reading
-                $0.typedKcal = nil
-            }
+            model.updateCardCalories { $0.useLabel(reading) }
         }
     }
 

@@ -153,9 +153,11 @@ final class AddLotModel: RunwayInputsModel {
             product = .new(draft)
             return
         }
+        entry.amount = amount
         entry.adopt(draft)
         newEntry = entry
         product = .new(entry.draft)
+        amount = entry.amount
     }
 
     /// Changes the new product's calorie answers (Slice 5 Task 5). A bag's net weight can switch it to lb and scale

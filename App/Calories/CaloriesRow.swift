@@ -12,6 +12,8 @@ struct CaloriesRow: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var netUnit: QuantityUnit = .ounce
+    /// The person tapped Edit, so the typed field stays while they clear it to retype.
+    @State private var editing = false
 
     private static let netUnits: [QuantityUnit] = [.ounce, .pound, .gram, .kilogram, .fluidOunce, .liter, .gallon]
 
@@ -28,6 +30,7 @@ struct CaloriesRow: View {
             if let kind = entry.switchedUnitKind {
                 Label(CalorieText.switched(to: kind), systemImage: "scalemass")
                     .font(.caption).foregroundStyle(Color.hsInk2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if entry.asksQuestion(unitKind: unitKind) { question }
             if showsTypedField { typedField }
@@ -46,10 +49,23 @@ struct CaloriesRow: View {
     @ViewBuilder
     private var valueLine: some View {
         if let known = entry.kcal(unitKind: unitKind) {
-            (Text(CalorieText.value(known.value, unitKind: unitKind)).fontWeight(.semibold).foregroundStyle(Color.hsInk)
-                + Text(" · \(CalorieText.origin(known.origin))").foregroundStyle(Color.hsInk2))
-                .font(.subheadline)
-                .numeric()
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                (Text(CalorieText.value(known.value, unitKind: unitKind)).fontWeight(.semibold).foregroundStyle(Color.hsInk)
+                    + Text(" · \(CalorieText.origin(known.origin))").foregroundStyle(Color.hsInk2))
+                    .font(.subheadline)
+                    .numeric()
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if !showsTypedField {
+                    Button("Edit") {
+                        editing = true
+                        update { $0.typedKcal = known.value }
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(Color.hsTint)
+                }
+            }
         } else {
             Label("No calories yet", systemImage: "exclamationmark.circle")
                 .font(.subheadline.weight(.semibold))
@@ -66,6 +82,7 @@ struct CaloriesRow: View {
         }
         row {
             Text(usesNet ? "Net weight" : "Servings per container").foregroundStyle(Color.hsInk)
+                .fixedSize(horizontal: false, vertical: true)
             if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
             if usesNet {
                 HStack(spacing: 6) {
@@ -102,7 +119,7 @@ struct CaloriesRow: View {
 
     /// Typed calories: shown when nothing else can give them, or once typed.
     private var showsTypedField: Bool {
-        entry.typedKcal != nil || (entry.kcal(unitKind: unitKind) == nil && !entry.asksQuestion(unitKind: unitKind))
+        editing || entry.typedKcal != nil || (entry.kcal(unitKind: unitKind) == nil && !entry.asksQuestion(unitKind: unitKind))
     }
 
     private var typedField: some View {
@@ -138,8 +155,9 @@ struct NameGuessLine: View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text("\(guessed ? "Guessed from the name" : "Shelf life"): \(profiles[profileKey]?.name ?? "")")
                 .font(.subheadline).foregroundStyle(Color.hsInk2)
+                .fixedSize(horizontal: false, vertical: true)
             Menu {
-                Picker("Shelf life", selection: Binding(get: { profileKey }, set: pick)) {
+                Picker("Shelf life", selection: Binding(get: { profileKey }, set: { pick($0) })) {
                     ForEach(profiles.profiles) { Text($0.name).tag($0.key) }
                 }
             } label: {

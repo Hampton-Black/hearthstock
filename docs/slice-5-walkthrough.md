@@ -11,7 +11,8 @@ Before you start:
 ## 1. Single serving: the bar
 
 1. **+**, scan the protein bar (0749826002378). **See:** the add form, and under the product "190 kcal per item · from Open Food Facts", with no question.
-2. Save it with any date.
+2. Tap **Edit** beside the calories. **See:** a kcal field holding 190, editable. Put it back to 190.
+3. Save it with any date.
 
 ## 2. Servings: the corn
 

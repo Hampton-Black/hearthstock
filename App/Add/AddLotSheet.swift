@@ -244,16 +244,10 @@ struct AddLotSheet: View {
         .sheet(isPresented: $scanningLabel) {
             NutritionLabelScannerSheet { reading in
                 guard var entry = model.newEntry else { return nil }
-                entry.updateCalories {
-                    $0.label = reading
-                    $0.typedKcal = nil
-                }
+                entry.updateCalories { $0.useLabel(reading) }
                 return entry.draft.kcalPerBaseUnit.map { (kcal: $0, unitKind: entry.draft.unitKind) }
             } onUse: { reading in
-                model.updateCalories {
-                    $0.label = reading
-                    $0.typedKcal = nil
-                }
+                model.updateCalories { $0.useLabel(reading) }
             }
         }
         .sheet(isPresented: $choosingDate) {
