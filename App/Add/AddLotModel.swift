@@ -166,7 +166,11 @@ final class AddLotModel: RunwayInputsModel {
         entry.updateCalories(change)
         newEntry = entry
         product = .new(entry.draft)
-        amount = entry.amount
+        // A switch or a new net weight gives the amount in the base unit (lb, gal, items).
+        if entry.amount != amount {
+            amount = entry.amount
+            unit = entry.draft.unitKind.baseUnit
+        }
     }
 
     /// "Change" on the name guess.

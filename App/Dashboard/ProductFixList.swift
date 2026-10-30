@@ -14,12 +14,16 @@ struct ProductFixList: View {
     /// A product with calories from its label, open in the product form for Save once the scanner has closed.
     @State private var pending: Product?
     @State private var filled: Product?
+    /// Products that have their missing value now, dropped from the list.
+    @State private var fixed: Set<ProductID> = []
 
     var body: some View {
         NavigationStack {
-            List(list.products) { product in
+            List(list.products.filter { !fixed.contains($0.id) }) { product in
                 VStack(alignment: .leading, spacing: 6) {
-                    NavigationLink { ProductForm(editing: product) } label: {
+                    NavigationLink {
+                        ProductForm(editing: product).onDisappear { Task { await refresh() } }
+                    } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(product.name)
                             if list.kind == .calories, let reason = reasons[product.id] {
@@ -63,11 +67,21 @@ struct ProductFixList: View {
                     pending = withCalories
                 }
             }
-            .sheet(item: $filled) { product in
+            .sheet(item: $filled, onDismiss: { Task { await refresh() } }) { product in
                 NavigationStack { ProductForm(editing: product) }
             }
         }
         .task { await loadReasons() }
+    }
+
+    /// Drops products whose calories (or water) were filled in since the list opened.
+    private func refresh() async {
+        for product in list.products where !fixed.contains(product.id) {
+            guard let current = try? await session.services.products.get(product.id) else { continue }
+            let done = list.kind == .calories
+                ? current.kcalPerBaseUnit != nil : current.potableWaterGalPerBaseUnit != nil
+            if done { fixed.insert(product.id) }
+        }
     }
 
     /// Why each is missing calories, from its saved lookup answer.

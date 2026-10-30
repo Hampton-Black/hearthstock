@@ -19,6 +19,9 @@ public struct CalorieEntry: Hashable, Sendable {
     /// before, to scale the amount by and to go back to.
     public private(set) var switchedUnitKind: UnitKind?
     public private(set) var itemsBeforeSwitch: Double?
+    /// One item's net weight in the switched base unit, so the amount is rescaled only when it changes and an
+    /// amount typed after the switch is kept.
+    private var switchedPerItem: Double?
 
     public init(lookedUp: LookedUpProduct? = nil) {
         self.lookedUp = lookedUp
@@ -85,14 +88,18 @@ public struct CalorieEntry: Hashable, Sendable {
            let base = try? net.inBaseUnit()
         {
             if switchedUnitKind == nil { itemsBeforeSwitch = amount ?? 1 }
+            if switchedUnitKind != bulk || switchedPerItem != base.value {
+                amount = (itemsBeforeSwitch ?? 1) * base.value
+            }
             switchedUnitKind = bulk
+            switchedPerItem = base.value
             draft.unitKind = bulk
-            amount = (itemsBeforeSwitch ?? 1) * base.value
         } else if switchedUnitKind != nil {
             draft.unitKind = .count
             amount = itemsBeforeSwitch
             switchedUnitKind = nil
             itemsBeforeSwitch = nil
+            switchedPerItem = nil
         }
         draft.kcalPerBaseUnit = kcal(unitKind: draft.unitKind)?.value
     }
@@ -105,6 +112,7 @@ extension CalorieEntry {
         if let switched = switchedUnitKind, draft.unitKind != switched {
             switchedUnitKind = nil
             itemsBeforeSwitch = nil
+            switchedPerItem = nil
         }
         guard draft.category == .food else { return }
         if draft.kcalPerBaseUnit != kcal(unitKind: draft.unitKind)?.value {

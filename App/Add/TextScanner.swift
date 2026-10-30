@@ -16,6 +16,7 @@ struct TextScannerSheet<Reading: Equatable, Picks: View>: View {
     @ViewBuilder let picks: (Reading, _ close: @escaping () -> Void) -> Picks
 
     @Environment(\.dismiss) private var dismiss
+    private let initial: Reading
     @State private var reading: Reading
     @State private var access = CameraAccess.current
 
@@ -29,6 +30,7 @@ struct TextScannerSheet<Reading: Equatable, Picks: View>: View {
         self.fallback = fallback
         self.read = read
         self.picks = picks
+        self.initial = initial
         _reading = State(initialValue: initial)
     }
 
@@ -53,7 +55,7 @@ struct TextScannerSheet<Reading: Equatable, Picks: View>: View {
                 }
                 VStack(spacing: 10) {
                     picks(reading) { dismiss() }
-                    if access == .ready {
+                    if access == .ready && reading == initial {
                         Text(hint)
                             .font(.subheadline)
                             .foregroundStyle(Color.hsCameraInk2)

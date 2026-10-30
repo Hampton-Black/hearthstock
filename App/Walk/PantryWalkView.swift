@@ -128,7 +128,7 @@ struct WalkConfirmCard: View {
             content(card)
                 .environment(\.colorScheme, .light)
                 .sheet(isPresented: $choosingDate) { dateSheet(card) }
-                .sheet(isPresented: $scanningLabel) { labelSheet(card) }
+                .sheet(isPresented: $scanningLabel) { labelSheet }
                 .task(id: card.id) {
                     if card.opensDateSheet { choosingDate = true }
                 }
@@ -228,13 +228,14 @@ struct WalkConfirmCard: View {
                     entry: entry.calories, unitKind: entry.draft.unitKind,
                     update: { model.updateCardCalories($0) },
                     scanLabel: { scanningLabel = true })
+                    .id(card.id)  // each card starts with its own net-weight unit
                     .padding(12)
                     .background(Color.hsBg, in: RoundedRectangle(cornerRadius: 14))
             }
         }
     }
 
-    private func labelSheet(_ card: PantryWalkModel.Card) -> some View {
+    private var labelSheet: some View {
         NutritionLabelScannerSheet { reading in
             guard var entry = model.card?.entry else { return nil }
             entry.updateCalories {

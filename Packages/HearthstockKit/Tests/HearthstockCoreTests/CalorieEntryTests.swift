@@ -139,6 +139,23 @@ import Testing
         #expect(amount == 2)
     }
 
+    @Test func anAmountTypedAfterTheSwitchIsKept() throws {
+        var entry = CalorieEntry(lookedUp: try Self.lookedUp("rice-25lb"))
+        var draft = try Self.draft("rice-25lb")
+        var amount: Double? = 1
+        entry.usesNetWeight = true
+        entry.netWeight = Quantity(value: 25, unit: .pound)
+        entry.apply(to: &draft, amount: &amount)
+        #expect(amount == 25)
+        amount = 50  // typed by hand: a bag and a half
+        entry.servings = 3  // an unrelated change
+        entry.apply(to: &draft, amount: &amount)
+        #expect(amount == 50)
+        entry.netWeight = Quantity(value: 20, unit: .pound)  // a new net weight rescales the item count
+        entry.apply(to: &draft, amount: &amount)
+        #expect(amount == 20)
+    }
+
     @Test func aLabelsNetWeightSwitchesToo() throws {
         var entry = CalorieEntry(lookedUp: nil)
         entry.label = NutritionReading(
