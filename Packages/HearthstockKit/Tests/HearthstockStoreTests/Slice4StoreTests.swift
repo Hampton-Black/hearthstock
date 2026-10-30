@@ -334,3 +334,32 @@ private struct World {
         #expect(!back.archived)
     }
 }
+
+// MARK: - Slice 5: serving fields in the cache
+
+@Suite struct Slice5LookupCacheTests {
+    /// A row Slice 4 wrote, before `LookedUpProduct` had serving fields, still reads back, with them empty.
+    @Test func aSlice4CacheRowStillReadsBack() async throws {
+        let world = try await World()
+        let json = #"{"brand":"Campbell's","categoryTags":["en:canned-foods"],"kcalPer100":83.33,"kcalPerServing":100,"name":"Cream Of Mushroom Soup","netQuantity":297.67,"netQuantityUnit":"gram","quantityLabel":"10.5 oz (298 g)"}"#
+        try await world.db.writer.write { db in
+            try db.execute(
+                sql: "INSERT INTO lookup_cache (barcode, outcome, product, fetchedAt) VALUES (?, 'found', ?, ?)",
+                arguments: [LookupCacheStoreTests.soupCode.rawValue, json, StoredTimestamp.string(from: t0)])
+        }
+        let entry = try #require(try await world.cache.get(LookupCacheStoreTests.soupCode))
+        #expect(entry.outcome == .found(LookupCacheStoreTests.soup))
+        #expect(entry.fetchedAt == t0)
+    }
+
+    @Test func servingFieldsRoundTrip() async throws {
+        let world = try await World()
+        var corn = LookupCacheStoreTests.soup
+        corn.servingLabel = "0.5 cup (125 g)"
+        corn.servingQuantity = 125
+        corn.servingQuantityUnit = .millilitre
+        let entry = CachedLookup(barcode: LookupCacheStoreTests.soupCode, outcome: .found(corn), fetchedAt: t0)
+        try await world.cache.put(entry)
+        #expect(try await world.cache.get(LookupCacheStoreTests.soupCode) == entry)
+    }
+}

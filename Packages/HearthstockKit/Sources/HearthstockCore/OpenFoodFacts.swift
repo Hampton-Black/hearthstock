@@ -99,6 +99,7 @@ public enum OpenFoodFacts {
             ?? (number(nutriments["energy-kj_100g"]) ?? number(nutriments["energy-kj_100ml"]))
                 .map { $0 / kilojoulesPerKilocalorie }
         let net = netQuantity(number(product["product_quantity"]), unit: text(product["product_quantity_unit"]))
+        let serving = netQuantity(number(product["serving_quantity"]), unit: text(product["serving_quantity_unit"]))
         let brand = text(product["brands"])?.split(separator: ",").first
             .map { $0.trimmingCharacters(in: .whitespaces) }
         return LookedUpProduct(
@@ -109,6 +110,9 @@ public enum OpenFoodFacts {
             netQuantityUnit: net?.unit,
             kcalPer100: kcal,
             kcalPerServing: number(nutriments["energy-kcal_serving"]),
+            servingLabel: text(product["serving_size"]),
+            servingQuantity: serving?.value,
+            servingQuantityUnit: serving?.unit,
             categoryTags: product["categories_tags"] as? [String] ?? [])
     }
 
