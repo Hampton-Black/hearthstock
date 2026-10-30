@@ -103,9 +103,14 @@ final class ScanFlowModel: RunwayInputsModel {
         case .known(let product, let lots):
             step = Step(barcode: code, kind: .existing(product, lots: lots))
         case .found(let draft):
+            let guess = lookedUp.flatMap {
+                OpenFoodFacts.profileGuess(
+                    $0, categories: services.offCategories, names: services.nameProfiles, profiles: services.profiles)
+            }
             step = Step(barcode: code, kind: .add(AddLotModel.Preset(
                 product: .new(draft), locationID: locationID,
-                note: "Filled in from Open Food Facts. Check the name and calories.", lookedUp: lookedUp)))
+                note: "Filled in from Open Food Facts. Check the name and calories.", lookedUp: lookedUp,
+                guess: guess)))
         case .notFound(let draft):
             step = Step(barcode: code, kind: .notFound(draft, reason: nil))
         case .lookupUnavailable(let draft, let reason):
@@ -262,9 +267,10 @@ struct AddScanView: View {
                 scanAnother: {},
                 finish: { dismiss() }))
         case .notFound(let draft, let reason):
-            ScanNotFoundForm(draft: draft, reason: reason) { finished in
+            ScanNotFoundForm(draft: draft, reason: reason) { started in
                 model.continueToAdd(
-                    AddLotModel.Preset(product: .new(finished), locationID: model.locationID), barcode: step.barcode)
+                    AddLotModel.Preset(product: .new(started.draft), locationID: model.locationID, newProduct: started),
+                    barcode: step.barcode)
             }
         }
     }

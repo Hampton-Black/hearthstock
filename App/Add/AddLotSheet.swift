@@ -22,6 +22,7 @@ struct AddLotSheet: View {
     /// A new product's draft, open in the product form for checking or changes before the save.
     @State private var editingDraft: DraftEdit?
     @State private var choosingDate = false
+    @State private var scanningLabel = false
     @State private var showingSaved = false
     /// The last "Save + add another" lot, shown in a banner above the fresh form.
     @State private var lastQuickSave: LotID?
@@ -116,6 +117,18 @@ struct AddLotSheet: View {
                 if case .new = model.product {
                     Button("Choose a different product") { choosingProduct = true }
                         .font(.subheadline)
+                }
+                if let entry = model.newEntry, case .new = model.product {
+                    if entry.naming.guess != nil || entry.naming.profilePicked {
+                        NameGuessLine(
+                            profileKey: entry.draft.shelfLifeProfileKey, guessed: entry.naming.guess != nil,
+                            profiles: session.services.profiles, pick: { model.pickProfile($0) })
+                    }
+                    if entry.draft.category == .food {
+                        CaloriesRow(
+                            entry: entry.calories, unitKind: entry.draft.unitKind,
+                            update: { model.updateCalories($0) }, scanLabel: { scanningLabel = true })
+                    }
                 }
             } header: {
                 Text("Product")
@@ -215,8 +228,8 @@ struct AddLotSheet: View {
             NavigationStack {
                 ProductPicker { choice in
                     switch choice {
-                    case .existing(let product): model.product = .existing(product)
-                    case .new(let draft): model.product = .new(draft)
+                    case .existing(let product): model.choose(.existing(product))
+                    case .new(let draft): model.choose(.new(draft))
                     }
                 }
             }
@@ -224,7 +237,22 @@ struct AddLotSheet: View {
         .sheet(item: $editingDraft) { edit in
             NavigationStack {
                 ProductForm(draft: edit.draft, lookedUp: model.lookedUp, showsCancel: true) { finished in
-                    model.product = .new(finished)
+                    model.formFinished(finished)
+                }
+            }
+        }
+        .sheet(isPresented: $scanningLabel) {
+            NutritionLabelScannerSheet { reading in
+                guard var entry = model.newEntry else { return nil }
+                entry.updateCalories {
+                    $0.label = reading
+                    $0.typedKcal = nil
+                }
+                return entry.draft.kcalPerBaseUnit.map { (kcal: $0, unitKind: entry.draft.unitKind) }
+            } onUse: { reading in
+                model.updateCalories {
+                    $0.label = reading
+                    $0.typedKcal = nil
                 }
             }
         }

@@ -113,6 +113,7 @@ struct PantryWalkView: View {
 struct WalkConfirmCard: View {
     let model: PantryWalkModel
     @State private var choosingDate = false
+    @State private var scanningLabel = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Side by side, or stacked at accessibility text sizes (design §7).
@@ -127,6 +128,7 @@ struct WalkConfirmCard: View {
             content(card)
                 .environment(\.colorScheme, .light)
                 .sheet(isPresented: $choosingDate) { dateSheet(card) }
+                .sheet(isPresented: $scanningLabel) { labelSheet(card) }
                 .task(id: card.id) {
                     if card.opensDateSheet { choosingDate = true }
                 }
@@ -142,6 +144,7 @@ struct WalkConfirmCard: View {
             } else {
                 Text(card.name).font(.title3.bold()).foregroundStyle(Color.hsInk)
             }
+            newProductDetails(card)
             row {
                 quantity(card)
                 if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
@@ -195,41 +198,54 @@ struct WalkConfirmCard: View {
 
     @ViewBuilder
     private func newProductFields(_ card: PantryWalkModel.Card) -> some View {
-        if case .new(var draft, let found, let reason) = card.subject {
-            VStack(spacing: 8) {
-                TextField("Name", text: Binding(get: { draft.name }, set: { name in
-                    draft.name = name
-                    model.card?.subject = .new(draft, found: found, reason: reason)
-                }))
-                .font(.title3.bold())
-                HStack {
-                    Picker("Category", selection: Binding(get: { draft.category }, set: { category in
-                        let oldDefault = ProductDraft.defaultProfileKey(for: draft.category)
-                        draft.category = category
-                        if draft.shelfLifeProfileKey == oldDefault {
-                            draft.shelfLifeProfileKey = ProductDraft.defaultProfileKey(for: category)
-                        }
-                        if category != .food { draft.kcalPerBaseUnit = nil }
-                        model.card?.subject = .new(draft, found: found, reason: reason)
-                    })) {
-                        ForEach(SupplyCategory.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .labelsHidden()
-                    Spacer()
-                    if draft.category == .food {
-                        TextField("kcal per item", value: Binding(get: { draft.kcalPerBaseUnit }, set: { kcal in
-                            draft.kcalPerBaseUnit = kcal
-                            model.card?.subject = .new(draft, found: found, reason: reason)
-                        }), format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 140)
-                    }
+        if case .new(let entry, _, let reason) = card.subject {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Name", text: Binding(get: { entry.draft.name }, set: { model.setCardName($0) }))
+                    .font(.title3.bold())
+                Picker("Category", selection: Binding(get: { entry.draft.category }, set: { model.setCardCategory($0) })) {
+                    ForEach(SupplyCategory.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
+                .labelsHidden()
                 if let reason, reason != .switchedOff {
                     Label(LookupText.unavailable(reason), systemImage: reason == .offline ? "wifi.slash" : "exclamationmark.circle")
                         .font(.caption).foregroundStyle(Color.hsInk2)
                 }
+            }
+        }
+    }
+
+    /// A new product's name guess and calories (Slice 5 Tasks 5 and 7).
+    @ViewBuilder
+    private func newProductDetails(_ card: PantryWalkModel.Card) -> some View {
+        if let entry = card.entry {
+            if entry.naming.guess != nil || entry.naming.profilePicked {
+                NameGuessLine(
+                    profileKey: entry.draft.shelfLifeProfileKey, guessed: entry.naming.guess != nil,
+                    profiles: model.services.profiles, pick: { model.pickCardProfile($0) })
+            }
+            if entry.draft.category == .food {
+                CaloriesRow(
+                    entry: entry.calories, unitKind: entry.draft.unitKind,
+                    update: { model.updateCardCalories($0) },
+                    scanLabel: { scanningLabel = true })
+                    .padding(12)
+                    .background(Color.hsBg, in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+    }
+
+    private func labelSheet(_ card: PantryWalkModel.Card) -> some View {
+        NutritionLabelScannerSheet { reading in
+            guard var entry = model.card?.entry else { return nil }
+            entry.updateCalories {
+                $0.label = reading
+                $0.typedKcal = nil
+            }
+            return entry.draft.kcalPerBaseUnit.map { (kcal: $0, unitKind: entry.draft.unitKind) }
+        } onUse: { reading in
+            model.updateCardCalories {
+                $0.label = reading
+                $0.typedKcal = nil
             }
         }
     }
@@ -313,8 +329,8 @@ struct WalkConfirmCard: View {
         let product: Product
         switch card.subject {
         case .known(let existing): product = existing
-        case .new(let draft, _, _):
-            guard let built = try? draft.product() else { return nil }
+        case .new(let entry, _, _):
+            guard let built = try? entry.draft.product() else { return nil }
             product = built
         }
         let lot = Lot(

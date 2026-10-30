@@ -5,16 +5,21 @@ import SwiftUI
 /// category, and calories per item for food. Next continues to the normal add form; Rescan goes back to the camera.
 struct ScanNotFoundForm: View {
     let reason: LookupUnavailableReason?
-    let next: (ProductDraft) -> Void
+    /// The product so far, with its calorie answers and name guess (Slice 5), for the add form.
+    let next: (NewProductEntry) -> Void
 
+    @Environment(AppSession.self) private var session
     @Environment(\.dismiss) private var dismiss
-    @State private var draft: ProductDraft
+    @State private var entry: NewProductEntry
+    @State private var scanningLabel = false
 
-    init(draft: ProductDraft, reason: LookupUnavailableReason?, next: @escaping (ProductDraft) -> Void) {
-        _draft = State(initialValue: draft)
+    init(draft: ProductDraft, reason: LookupUnavailableReason?, next: @escaping (NewProductEntry) -> Void) {
+        _entry = State(initialValue: NewProductEntry(draft: draft, amount: draft.unitKind == .count ? 1 : nil))
         self.reason = reason
         self.next = next
     }
+
+    private var draft: ProductDraft { entry.draft }
 
     private var canContinue: Bool { !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
@@ -32,20 +37,31 @@ struct ScanNotFoundForm: View {
                 }
                 Section {
                     LabeledContent("Name") {
-                        TextField("Black beans, 15 oz", text: $draft.name).multilineTextAlignment(.trailing)
+                        TextField("Black beans, 15 oz", text: Binding(get: { draft.name }, set: { name in
+                            entry.setName(
+                                name, guesser: session.services.nameProfiles, profiles: session.services.profiles)
+                        }))
+                        .multilineTextAlignment(.trailing)
                     }
-                    Picker("Category", selection: Binding(get: { draft.category }, set: { setCategory($0) })) {
+                    Picker("Category", selection: Binding(get: { draft.category }, set: { category in
+                        entry.setCategory(
+                            category, guesser: session.services.nameProfiles, profiles: session.services.profiles)
+                    })) {
                         ForEach(SupplyCategory.allCases, id: \.self) { Label($0.title, systemImage: $0.symbol).tag($0) }
                     }
+                    if entry.naming.guess != nil || entry.naming.profilePicked {
+                        NameGuessLine(
+                            profileKey: draft.shelfLifeProfileKey, guessed: entry.naming.guess != nil,
+                            profiles: session.services.profiles, pick: { entry.pickProfile($0) })
+                    }
                     if draft.category == .food {
-                        LabeledContent("Calories per item") {
-                            TextField("Optional", value: $draft.kcalPerBaseUnit, format: .number)
-                                .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                        }
+                        CaloriesRow(
+                            entry: entry.calories, unitKind: draft.unitKind,
+                            update: { change in entry.updateCalories(change) }, scanLabel: { scanningLabel = true })
                     }
                 } footer: {
                     Text(draft.category == .food
-                        ? "Counted per item (can, jar, bottle). Calories per item = calories per serving × servings per container. Leave it empty and it shows as missing calories until you add it."
+                        ? "Counted per item (can, jar, bottle). Leave calories empty and it shows as missing calories until you add them."
                         : "Counted per item. You can change how it's measured on the next screen.")
                 }
                 Section {
@@ -53,6 +69,21 @@ struct ScanNotFoundForm: View {
                 }
             }
             .hearthList()
+            .sheet(isPresented: $scanningLabel) {
+                NutritionLabelScannerSheet { reading in
+                    var preview = entry
+                    preview.updateCalories {
+                        $0.label = reading
+                        $0.typedKcal = nil
+                    }
+                    return preview.draft.kcalPerBaseUnit.map { (kcal: $0, unitKind: preview.draft.unitKind) }
+                } onUse: { reading in
+                    entry.updateCalories {
+                        $0.label = reading
+                        $0.typedKcal = nil
+                    }
+                }
+            }
             .navigationTitle("Not found")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -60,7 +91,7 @@ struct ScanNotFoundForm: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Next") {
                         dismiss()
-                        next(draft)
+                        next(entry)
                     }
                     .disabled(!canContinue)
                 }
@@ -71,15 +102,5 @@ struct ScanNotFoundForm: View {
     private var message: String {
         guard let reason else { return "Open Food Facts doesn't know this barcode. Add what you know; the barcode is kept." }
         return "\(LookupText.unavailable(reason)) You can fill this in now, and a later lookup can fill in what's missing."
-    }
-
-    private func setCategory(_ category: SupplyCategory) {
-        let oldDefault = ProductDraft.defaultProfileKey(for: draft.category)
-        draft.category = category
-        if draft.shelfLifeProfileKey == oldDefault {
-            draft.shelfLifeProfileKey = ProductDraft.defaultProfileKey(for: category)
-        }
-        if category != .food { draft.kcalPerBaseUnit = nil }
-        draft.potableWaterGalPerBaseUnit = nil
     }
 }
