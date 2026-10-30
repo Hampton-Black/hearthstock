@@ -213,8 +213,7 @@ public enum OpenFoodFacts {
     }
 
     /// Calories per base unit for `unitKind`: per lb or per gal from the per-100 value, per item only when the net
-    /// quantity is known. Never guessed from a serving: empty calories show up as missing nutrition, which is the
-    /// conservative outcome.
+    /// quantity is known. Never from a serving: `CalorieFill` adds single servings and the person's answers.
     public static func kcalPerBaseUnit(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
         guard let per100 = product.kcalPer100 else { return nil }
         switch unitKind {
@@ -228,9 +227,10 @@ public enum OpenFoodFacts {
     }
 
     /// What a form starts with: calories rounded to whole kcal, as labels print them, and drinkable water to a
-    /// thousandth of a gallon.
+    /// thousandth of a gallon. Calories come from the lookup alone (`CalorieFill` rules a and b): per 100 × net
+    /// quantity, or a single-serving package's calories per serving.
     public static func suggestedKcal(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
-        kcalPerBaseUnit(product, unitKind: unitKind)?.rounded()
+        CalorieFill.kcalPerBaseUnit(lookedUp: product, unitKind: unitKind)?.value
     }
 
     public static func suggestedWaterGal(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {

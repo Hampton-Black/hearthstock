@@ -42,7 +42,8 @@ import Testing
         // categories, the name guesses the profile (Slice 5).
         Expected(fixture: "corn", name: "H-E-B Whole Kernel Corn", profile: "canned_low_acid"),
         Expected(fixture: "cinnamon-rolls", name: "Walmart Cinnamon rolls"),
-        Expected(fixture: "protein-bar", name: "Cookies & Cream Pure Protein"),  // the name already holds the brand
+        Expected(fixture: "protein-bar", name: "Cookies & Cream Pure Protein",  // the name already holds the brand
+                 kcal: 190),  // a single serving, "1 bar (50 g)" (Slice 5)
         Expected(fixture: "rice-25lb", name: "Kings Enriched Long Grain Parboiled Rice", profile: "white_rice"),
         Expected(fixture: "water-40pack", name: ""),  // nothing to go on: the form asks for the name and category
         // With a net quantity.
