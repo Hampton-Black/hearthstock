@@ -49,7 +49,7 @@ Before you start:
 
 1. **+**, scan the corn again (delete it first if needed). Type **3.5** servings. **See:** 280.
 2. Tap the product (Change) and set kcal per item to **300** in the product form → Save. **See:** "300 kcal per item · entered by you".
-3. Change servings to 4 and **Use this** from a label scan. **See:** the 300 you typed stays until you clear it in the form or use **Use this**, which replaces it on purpose. Cancel.
+3. **See:** the servings question is gone, and nothing changes the 300 while you edit other fields. Only **Scan the label** → **Use this** replaces it, because that's a deliberate tap. Cancel.
 
 ## 8. A walk of one shelf
 
