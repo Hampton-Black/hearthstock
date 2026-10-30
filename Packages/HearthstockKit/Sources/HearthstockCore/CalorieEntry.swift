@@ -98,6 +98,21 @@ public struct CalorieEntry: Hashable, Sendable {
     }
 }
 
+extension CalorieEntry {
+    /// A new product's draft as the product form handed it back: calories that aren't this entry's own count as
+    /// typed, so no fill replaces them, and a unit kind changed by hand ends a Decision 8 switch.
+    public mutating func adopt(_ draft: ProductDraft) {
+        if let switched = switchedUnitKind, draft.unitKind != switched {
+            switchedUnitKind = nil
+            itemsBeforeSwitch = nil
+        }
+        guard draft.category == .food else { return }
+        if draft.kcalPerBaseUnit != kcal(unitKind: draft.unitKind)?.value {
+            typedKcal = draft.kcalPerBaseUnit
+        }
+    }
+}
+
 /// The profile a new product's typed name suggests (Slice 5 Decision 7): it follows the name while the profile is
 /// still the category default or this guess, and stops for good once the person picks a profile.
 public struct NameGuessing: Hashable, Sendable {

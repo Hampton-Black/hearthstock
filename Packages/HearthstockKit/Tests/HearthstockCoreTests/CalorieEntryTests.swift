@@ -76,6 +76,35 @@ import Testing
         #expect(entry.kcal(unitKind: .count)?.origin == .filled(.label))
     }
 
+    @Test func theProductFormsCaloriesCountAsTyped() throws {
+        var entry = CalorieEntry(lookedUp: try Self.lookedUp("corn"))
+        entry.servings = 3.5
+        var draft = try Self.draft("corn")
+        draft.kcalPerBaseUnit = 280
+        entry.adopt(draft)  // the form left the filled value alone
+        #expect(entry.typedKcal == nil)
+        draft.kcalPerBaseUnit = 300
+        entry.adopt(draft)
+        #expect(entry.typedKcal == 300)
+        entry.servings = 4
+        var amount: Double? = 1
+        entry.apply(to: &draft, amount: &amount)
+        #expect(draft.kcalPerBaseUnit == 300)
+    }
+
+    @Test func aUnitKindChangedByHandEndsTheSwitch() throws {
+        var entry = CalorieEntry(lookedUp: try Self.lookedUp("rice-25lb"))
+        var draft = try Self.draft("rice-25lb")
+        var amount: Double? = 1
+        entry.usesNetWeight = true
+        entry.netWeight = Quantity(value: 25, unit: .pound)
+        entry.apply(to: &draft, amount: &amount)
+        #expect(draft.unitKind == .mass)
+        draft.unitKind = .count
+        entry.adopt(draft)
+        #expect(entry.switchedUnitKind == nil)
+    }
+
     // MARK: Decision 8
 
     @Test func aBulkNetWeightSwitchesToMassAndBack() throws {
