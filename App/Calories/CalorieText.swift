@@ -16,7 +16,8 @@ enum CalorieText {
         case .filled(.netQuantity), .filled(.singleServing): "from Open Food Facts"
         case .filled(.servings(let perServing, let servings)):
             "\(Amount.text(perServing, fraction: 0)) × \(Amount.text(servings)) servings"
-        case .filled(.netWeight(_, let net)): "from the \(QuantityText.format(net.value, net.unit)) net weight"
+        case .filled(.netWeight(let per100, let net)):
+            "\(Amount.text(per100, fraction: 0)) kcal per 100 g × \(QuantityText.format(net.value, net.unit))"
         case .filled(.label): "from the label"
         }
     }

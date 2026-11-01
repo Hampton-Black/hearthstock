@@ -81,10 +81,10 @@ public enum NutritionLabelParser {
         return nil
     }
 
-    /// "Calories 80" or "Calories per serving 210", with a second number on dual-column panels. Not "Calories from
-    /// Fat", not "Calories: 2,000". A trailing comma ("Calories 200, Total Fat 6g") ends the number.
+    /// "Calories 80", "Calories per serving 210" or the bilingual "Calories /Calorías 190", with a second number on
+    /// dual-column panels. Not "Calories from Fat", not "Calories: 2,000". A trailing comma ("Calories 200, Total Fat 6g") ends the number.
     private static let calorieNumber = #"(\d{1,3}(?:,\d{3})+|\d+)(?![\d%]|[,.]\d)"#
-    private static let caloriesPattern = regex(#"\bcalories(?:\s+per\s+serving)?\s*"# + calorieNumber + #"(?:\s+"# + calorieNumber + #")?"#)
+    private static let caloriesPattern = regex(#"\bcalories(?:\s*/\s*calor[ií]as)?(?:\s+per\s+serving)?\s*"# + calorieNumber + #"(?:\s+"# + calorieNumber + #")?"#)
     /// A per-container column heading ("Per serving Per container"), not "2 servings per container" or "1 serving
     /// per container".
     private static let perContainerHeading = regex(#"(?<!servings )(?<!\d serving )\bper\s+(?:container|package|pkg\b|can\b|bottle\b)"#)
@@ -138,6 +138,8 @@ public enum NutritionLabelParser {
             .map(\.range.location)
         let bounds = zip(starts, starts.dropFirst() + [end])
         let headings = bounds.map { text.substring(with: NSRange(location: $0, length: $1 - $0)) }
+            // A bilingual heading repeats itself in Spanish: "Per 2.3oz dry mix Por 2.3oz mezcla".
+            .map { $0.replacingOccurrences(of: #"\s+por\b.*$"#, with: "", options: [.regularExpression, .caseInsensitive]) }
             .map { $0.trimmingCharacters(in: .whitespaces) }
         let lastTwo = Array(headings.suffix(2))
         guard lastTwo.count == 2, lastTwo.allSatisfy({ $0.count <= 30 }) else { return [] }
