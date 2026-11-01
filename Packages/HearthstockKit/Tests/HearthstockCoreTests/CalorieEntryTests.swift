@@ -359,6 +359,18 @@ import Testing
         #expect(entry.kcal(unitKind: .count)?.value == 280)
     }
 
+    @Test func aLabelWithNoNetWeightKeepsABulkSwitch() {
+        let rice = LookedUpProduct(name: "Rice", kcalPer100: 362, kcalPerServing: 170)
+        var entry = NewProductEntry(draft: Self.draft(rice), amount: 1, lookedUp: rice)
+        entry.updateCalories {
+            $0.usesNetWeight = true
+            $0.netWeight = Quantity(value: 25, unit: .pound)
+        }
+        entry.updateCalories { $0.useLabel(NutritionReading(caloriesPerServing: 170, servingsPerContainer: 20)) }
+        #expect(entry.draft.unitKind == .mass)
+        #expect(entry.amount == 25)
+    }
+
     @Test func clearedCaloriesStayEmptyUntilAnswered() {
         let bar = LookedUpProduct(name: "Bar", kcalPerServing: 190, servingLabel: "1 bar (50 g)")
         var entry = NewProductEntry(draft: Self.draft(bar), amount: 1, lookedUp: bar)

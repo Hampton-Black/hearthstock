@@ -53,13 +53,16 @@ public struct CalorieEntry: Hashable, Sendable {
     }
 
     /// **Use this** after a label scan: a deliberate tap, so the reading replaces the typed calories and the answers
-    /// to the question.
+    /// to the question. Panels rarely print the net weight, so one that switched a bag to lb stays unless the reading
+    /// has its own.
     public mutating func useLabel(_ reading: NutritionReading) {
         label = reading
         typedKcal = nil
         servings = nil
-        netWeight = nil
-        usesNetWeight = false
+        if switchedUnitKind == nil || reading.netWeight != nil {
+            netWeight = nil
+            usesNetWeight = false
+        }
     }
 
     /// The lookup has calories per serving, so "Servings per container" can answer.
