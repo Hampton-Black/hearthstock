@@ -34,14 +34,25 @@ The work is built in slices, each a vertical piece that ends with tests green an
 - **Slice 3: first real UI** ([plan](docs/slice-3.md)). The Runway dashboard (food, water and effective runway as a range, with Focus next), Inventory (by location or category, search, expiring-soon filter, use, adjust, edit and delete), a manual Add flow with any date past or future, Settings for the household, locations and backup restore, and the **Use soon** state.
 - **Slice 4: scanning, pantry walk and undated lots** ([plan](docs/slice-4.md), [walk-through](docs/slice-4-walkthrough.md)). Barcode scanning with VisionKit and a hand-typed fallback; Open Food Facts lookups with a local cache and a Settings switch; "Already have this" to add to an existing lot; pantry walk mode with undo and a runway before/after summary; estimated dates for packages with no printed date; Live Text for reading printed dates; and running on a real iPhone.
 
-`swift test` runs 438 tests in 54 suites, and the Slice 4 walk-through has been run on an iPhone 15 Pro.
+- **Slice 5: calories and categories at scan time** ([plan](docs/slice-5.md), [walk-through](docs/slice-5-walkthrough.md)). The scan card asks for servings per container or the net weight when calories can't be worked out; Live Text reads Nutrition Facts panels, including bilingual ones; a bulk bag's net weight switches it to lb or gal; and the shelf-life profile is guessed from the product name, shown as a guess you can change.
+- **Products list.** Inventory → Products finds any saved product, with its current and used-up lots. Delete works only once no lot is left, so history isn't lost.
 
-### Now: Slice 5, calories and categories at scan time
+`swift test` runs 533 tests in 64 suites, and the Slice 5 walk-through has been run on an iPhone 15 Pro.
 
-Planned in [`docs/slice-5.md`](docs/slice-5.md). Open Food Facts usually knows calories per serving but rarely the package size, and often has no categories, so a scanned can tends to need its calories and shelf-life profile fixed by hand afterwards. Slice 5 fills them in at the shelf:
+### Now: real use
 
-- Calories per item from a single-serving package, from servings per container or the net weight (one question on the scan card), or by reading the Nutrition Facts panel with Live Text
-- A shelf-life profile guessed from the product name when there are no categories, shown as a guess you can change
+The real food and water in the pantry and garage are going in, so the app gets used the way it's meant to be. What that turns up decides the order of the work below. The phases above end at gates about real use, so power and capabilities wait until the shelves are entered.
+
+### Next up
+
+Ideas for the next slice, in the order they're likely to be picked up. Tasks are tracked in Beads once a slice is planned.
+
+- **Kits and the Kits tab (Slice 6, the likely next slice).** Go-bags are the main v1 promise still missing. This includes the first new database migration since Slice 4.
+- **Local reminders.** Could move ahead of kits if real dates make them more useful sooner.
+- **Per-product shelf-life windows in the app.** For items that are safe to judge by hand, like old brown rice marked Expired. The data model already supports it; only the screens are missing.
+- **A reset option in Settings.** Today, starting fresh means deleting the app.
+- **Bringing back a used-up lot.** Used-up lots can be viewed and deleted, but not restored.
+- **Smaller fixes.** Better name-guess keywords as real products turn up, and clearer calories for multipacks with a single-serving label.
 
 ### Rest of v1
 
