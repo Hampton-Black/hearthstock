@@ -57,6 +57,18 @@ extension View {
         listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color.hsBg)
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                // The number pads have no key to close them.
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(
+                            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
     }
 
     /// The dashboard's card: card color, 20 pt corners.
