@@ -6,7 +6,7 @@ Before you start:
 
 - Settings → **Export backup**, so you can get today's data back afterwards.
 - Settings → Online lookup → **Clear saved lookups**. Answers saved by Slice 4 don't have the serving size, so the bar wouldn't be recognized as one serving until it's looked up again (Decision 9).
-- If the corn, rice, rolls or bar are already products, delete them (or their test lots) so each scans as new. Undo in a walk also removes a product it created.
+- If the corn, rice, rolls or bar are already products, delete their lots, then the product, from Inventory → **Products**, so each scans as new. Undo in a walk also removes a product it created.
 
 ## 1. Single serving: the bar
 
@@ -22,7 +22,7 @@ Before you start:
 
 ## 3. Net weight
 
-1. Delete the corn you just saved (or scan a different can with only per-serving data). Scan it again.
+1. Delete the corn you just saved in Inventory → **Products** (or scan a different can with only per-serving data). Scan it again.
 2. Turn on **Net weight instead**, type **15.25** and leave the unit at **oz**. **See:** "277 kcal per item · from the 15.25 oz net weight". Turn the toggle off. **See:** the servings answer comes back if you'd typed one, or "No calories yet".
 3. Cancel.
 

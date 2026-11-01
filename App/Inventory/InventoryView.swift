@@ -40,6 +40,11 @@ struct InventoryView: View {
             }
             .background(Color.hsBg)
             .navigationTitle("Inventory")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink("Products") { ProductsView() }
+                }
+            }
             .addItemButton(showsScan: true)
             .navigationDestination(for: LotID.self) { LotDetailView(lotID: $0) }
         }
