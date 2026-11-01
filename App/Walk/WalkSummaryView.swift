@@ -10,6 +10,7 @@ struct WalkSummaryView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var openLot: LotRef?
+    @State private var fixingCalories: ProductList?
 
     private struct LotRef: Identifiable {
         let id: LotID
@@ -31,6 +32,7 @@ struct WalkSummaryView: View {
                 }
                 runway
                 needsDate
+                missingCalories
                 added
             }
             .padding(.horizontal, 16)
@@ -57,6 +59,7 @@ struct WalkSummaryView: View {
         .sheet(item: $openLot) { ref in
             NavigationStack { LotDetailView(lotID: ref.id) }
         }
+        .sheet(item: $fixingCalories) { list in ProductFixList(list: list) }
     }
 
     private var subtitle: String {
@@ -108,6 +111,33 @@ struct WalkSummaryView: View {
                         Text(lots.count == 1 ? "1 item needs a date" : "\(lots.count) items need a date")
                             .font(.headline).foregroundStyle(Color.hsInk)
                         Text("Counted as Good until set").font(.subheadline).foregroundStyle(Color.hsInk2)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(Color.hsInk3)
+                }
+                .padding(16)
+                .background(Color.hsAmberBg, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    /// Food added this walk that still has no calories (Slice 5 Task 8), opening the same list as Focus next.
+    @ViewBuilder
+    private var missingCalories: some View {
+        let products = model.inputs?.products ?? []
+        let missing = model.walk.productsMissingCalories(products)
+        if !missing.isEmpty {
+            Button {
+                fixingCalories = ProductList(
+                    kind: .calories, products: missing.compactMap { id in products.first { $0.id == id } })
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "flame").foregroundStyle(Color.hsAmber)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(missing.count == 1 ? "1 item has no calories" : "\(missing.count) items have no calories")
+                            .font(.headline).foregroundStyle(Color.hsInk)
+                        Text("Not counted in food runway").font(.subheadline).foregroundStyle(Color.hsInk2)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").foregroundStyle(Color.hsInk3)

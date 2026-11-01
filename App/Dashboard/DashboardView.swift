@@ -436,31 +436,3 @@ struct ProductList: Identifiable {
     let products: [Product]
     var id: [ProductID] { products.map(\.id) }
 }
-
-/// The products the runway couldn't count, each opening its product form.
-private struct ProductFixList: View {
-    let list: ProductList
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List(list.products) { product in
-                NavigationLink { ProductForm(editing: product) } label: {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(product.name)
-                        if product.barcode != nil {
-                            Label("Has a barcode: Look up online is inside", systemImage: "barcode.viewfinder")
-                                .font(.caption).foregroundStyle(Color.hsInk2)
-                        }
-                    }
-                }
-            }
-            .hearthList()
-            .navigationTitle(list.kind == .calories ? "Missing calories" : "Missing water volume")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-        }
-    }
-}

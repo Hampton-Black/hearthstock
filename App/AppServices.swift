@@ -21,8 +21,13 @@ struct AppServices: Sendable {
     let lookupCache: any LookupCacheRepository
     let profiles: ShelfLifeProfileTable
     let offCategories: OFFCategoryMap
+    /// Profile guesses from a product's name, when its categories say nothing (Slice 5).
+    let nameProfiles: NameProfileGuesser
 
-    init(database: AppDatabase, profiles: ShelfLifeProfileTable, offCategories: OFFCategoryMap) {
+    init(
+        database: AppDatabase, profiles: ShelfLifeProfileTable, offCategories: OFFCategoryMap,
+        nameProfiles: NameProfileGuesser
+    ) {
         sites = GRDBSiteRepository(database: database)
         people = GRDBPersonRepository(database: database)
         locations = GRDBLocationRepository(database: database)
@@ -40,6 +45,7 @@ struct AppServices: Sendable {
             isEnabled: { Preferences.onlineLookupEnabled })
         self.profiles = profiles
         self.offCategories = offCategories
+        self.nameProfiles = nameProfiles
     }
 
     /// "Hearthstock/0.1.0 (contact)", from the version and the `OFF_CONTACT` build setting in project.yml.
@@ -53,12 +59,13 @@ struct AppServices: Sendable {
     /// Opens the on-disk database (running every migration), loads the bundled shelf-life table and makes
     /// sure the default site exists.
     static func start() async throws -> (services: AppServices, site: Site) {
-        let (database, profiles, offCategories) = try await Task.detached {
-            // The category map only improves profile guesses for looked-up products; without it the app still opens.
+        let (database, profiles, offCategories, nameProfiles) = try await Task.detached {
+            // The category map and the name keywords only improve profile guesses; without them the app still opens.
             (try AppDatabase.onDisk(), try ShelfLifeProfileTable.bundledDefaults(),
-             (try? OFFCategoryMap.bundled()) ?? .empty)
+             (try? OFFCategoryMap.bundled()) ?? .empty, (try? NameProfileGuesser.bundled()) ?? .empty)
         }.value
-        let services = AppServices(database: database, profiles: profiles, offCategories: offCategories)
+        let services = AppServices(
+            database: database, profiles: profiles, offCategories: offCategories, nameProfiles: nameProfiles)
         let site = try await services.sites.ensureDefaultSite()
         return (services, site)
     }

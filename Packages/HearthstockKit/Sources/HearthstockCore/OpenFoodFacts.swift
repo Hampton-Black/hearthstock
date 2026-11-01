@@ -99,6 +99,7 @@ public enum OpenFoodFacts {
             ?? (number(nutriments["energy-kj_100g"]) ?? number(nutriments["energy-kj_100ml"]))
                 .map { $0 / kilojoulesPerKilocalorie }
         let net = netQuantity(number(product["product_quantity"]), unit: text(product["product_quantity_unit"]))
+        let serving = netQuantity(number(product["serving_quantity"]), unit: text(product["serving_quantity_unit"]))
         let brand = text(product["brands"])?.split(separator: ",").first
             .map { $0.trimmingCharacters(in: .whitespaces) }
         return LookedUpProduct(
@@ -109,6 +110,9 @@ public enum OpenFoodFacts {
             netQuantityUnit: net?.unit,
             kcalPer100: kcal,
             kcalPerServing: number(nutriments["energy-kcal_serving"]),
+            servingLabel: text(product["serving_size"]),
+            servingQuantity: serving?.value,
+            servingQuantityUnit: serving?.unit,
             categoryTags: product["categories_tags"] as? [String] ?? [])
     }
 
@@ -144,10 +148,15 @@ public enum OpenFoodFacts {
     // MARK: Drafts
 
     /// The add form's starting point for a found product. Everything stays editable before the first save.
+    ///
+    /// The profile comes from the categories, then from the name when they say nothing (Slice 5 Decision 6), then
+    /// the category default.
     public static func draft(
-        from product: LookedUpProduct, barcode: Barcode?, categories: OFFCategoryMap, profiles: ShelfLifeProfileTable
+        from product: LookedUpProduct, barcode: Barcode?, categories: OFFCategoryMap, names: NameProfileGuesser,
+        profiles: ShelfLifeProfileTable
     ) -> ProductDraft {
-        let category: Category = categories.isWater(product.categoryTags) ? .water : .food
+        let guess = profileGuess(product, categories: categories, names: names, profiles: profiles)
+        let category: Category = categories.isWater(product.categoryTags) ? .water : guess?.category ?? .food
         let kind = unitKind(product)
         return ProductDraft(
             name: name(product),
@@ -156,8 +165,24 @@ public enum OpenFoodFacts {
             unitKind: kind,
             kcalPerBaseUnit: category == .food ? suggestedKcal(product, unitKind: kind) : nil,
             potableWaterGalPerBaseUnit: category == .water ? suggestedWaterGal(product, unitKind: kind) : nil,
-            shelfLifeProfileKey: categories.profile(for: product.categoryTags, in: profiles)
+            shelfLifeProfileKey: categories.profile(for: product.categoryTags, in: profiles) ?? guess?.profile
                 ?? ProductDraft.defaultProfileKey(for: category))
+    }
+
+    /// The name's guess when the categories give neither water nor a profile, else nil: what the draft's profile
+    /// was "guessed from the name", for the card and form to say so.
+    public static func profileGuess(
+        _ product: LookedUpProduct, categories: OFFCategoryMap, names: NameProfileGuesser,
+        profiles: ShelfLifeProfileTable
+    ) -> NameProfileGuesser.Guess? {
+        guard !categories.isWater(product.categoryTags),
+              categories.profile(for: product.categoryTags, in: profiles) == nil,
+              let name = product.name
+        else { return nil }
+        let guess = names.guess(name: name, quantityLabel: product.quantityLabel, in: profiles)
+        // Something with calories isn't water, whatever its name says ("Water Crackers", "Coconut Water").
+        let hasCalories = (product.kcalPer100 ?? 0) > 0 || (product.kcalPerServing ?? 0) > 0
+        return guess?.category == .water && hasCalories ? nil : guess
     }
 
     /// Brand, product name and the label's size, because different sizes are different products: "Campbell's Cream
@@ -191,8 +216,7 @@ public enum OpenFoodFacts {
     }
 
     /// Calories per base unit for `unitKind`: per lb or per gal from the per-100 value, per item only when the net
-    /// quantity is known. Never guessed from a serving: empty calories show up as missing nutrition, which is the
-    /// conservative outcome.
+    /// quantity is known. Never from a serving: `CalorieFill` adds single servings and the person's answers.
     public static func kcalPerBaseUnit(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
         guard let per100 = product.kcalPer100 else { return nil }
         switch unitKind {
@@ -206,9 +230,10 @@ public enum OpenFoodFacts {
     }
 
     /// What a form starts with: calories rounded to whole kcal, as labels print them, and drinkable water to a
-    /// thousandth of a gallon.
+    /// thousandth of a gallon. Calories come from the lookup alone (`CalorieFill` rules a and b): per 100 × net
+    /// quantity, or a single-serving package's calories per serving.
     public static func suggestedKcal(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {
-        kcalPerBaseUnit(product, unitKind: unitKind)?.rounded()
+        CalorieFill.kcalPerBaseUnit(lookedUp: product, unitKind: unitKind)?.value
     }
 
     public static func suggestedWaterGal(_ product: LookedUpProduct, unitKind: UnitKind) -> Double? {

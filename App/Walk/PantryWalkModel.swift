@@ -10,15 +10,15 @@ final class PantryWalkModel: RunwayInputsModel {
     struct Card: Identifiable {
         enum Subject {
             case known(Product)
-            /// From a lookup (found) or blank (not found / unavailable, with the reason).
-            case new(ProductDraft, found: Bool, reason: LookupUnavailableReason?)
+            /// From a lookup (found) or blank (not found / unavailable, with the reason). The entry keeps the draft,
+            /// the amount, the calorie answers and the name guess in step (Slice 5).
+            case new(NewProductEntry, found: Bool, reason: LookupUnavailableReason?)
         }
 
         let id = UUID()
         let barcode: Barcode
         var subject: Subject
-        /// In the product's base unit; count products start at 1.
-        var amount: Double?
+        private var knownAmount: Double?
         var printed: AddLotModel.PrintedDate = .unset
         var estimateMonths: Int?
         /// "Different date" opens the card straight into the date sheet.
@@ -32,36 +32,63 @@ final class PantryWalkModel: RunwayInputsModel {
             self.subject = subject
             switch subject {
             case .known: asksForBasics = false
-            case .new(let draft, let found, _):
-                asksForBasics = !found || draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            case .new(let entry, let found, _):
+                asksForBasics = !found || entry.draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
+        }
+
+        /// In the product's base unit; count products start at 1.
+        var amount: Double? {
+            get {
+                if case .new(let entry, _, _) = subject { entry.amount } else { knownAmount }
+            }
+            set {
+                if case .new(var entry, let found, let reason) = subject {
+                    entry.amount = newValue
+                    subject = .new(entry, found: found, reason: reason)
+                } else {
+                    knownAmount = newValue
+                }
+            }
+        }
+
+        /// The new product's entry, when there is one.
+        var entry: NewProductEntry? {
+            if case .new(let entry, _, _) = subject { entry } else { nil }
+        }
+
+        /// Changes the new product's entry; does nothing for a known product.
+        mutating func modify(_ change: (inout NewProductEntry) -> Void) {
+            guard case .new(var entry, let found, let reason) = subject else { return }
+            change(&entry)
+            subject = .new(entry, found: found, reason: reason)
         }
 
         var unitKind: UnitKind {
             switch subject {
             case .known(let product): product.unitKind
-            case .new(let draft, _, _): draft.unitKind
+            case .new(let entry, _, _): entry.draft.unitKind
             }
         }
 
         var name: String {
             switch subject {
             case .known(let product): product.name
-            case .new(let draft, _, _): draft.name
+            case .new(let entry, _, _): entry.draft.name
             }
         }
 
         var category: SupplyCategory {
             switch subject {
             case .known(let product): product.category
-            case .new(let draft, _, _): draft.category
+            case .new(let entry, _, _): entry.draft.category
             }
         }
 
         var profileKey: ShelfLifeProfileKey {
             switch subject {
             case .known(let product): product.shelfLifeProfileKey
-            case .new(let draft, _, _): draft.shelfLifeProfileKey
+            case .new(let entry, _, _): entry.draft.shelfLifeProfileKey
             }
         }
     }
@@ -149,32 +176,62 @@ final class PantryWalkModel: RunwayInputsModel {
         }
         let statuses = LotStatusEvaluator.statuses(for: inputs, profiles: services.profiles, on: today)
         var outcome = ScanResolution.resolve(code, products: inputs.products, statuses: statuses, lookup: nil)
+        var lookedUp: LookedUpProduct?
+        var guess: NameProfileGuesser.Guess?
         if case .lookingUp = outcome {
             lookingUp = code
             let result = await services.lookup.lookup(code)
             lookingUp = nil
-            let lookup: ScanLookup = switch result {
+            let lookup: ScanLookup
+            switch result {
             case .found(let product):
-                .found(OpenFoodFacts.draft(
-                    from: product, barcode: code, categories: services.offCategories, profiles: services.profiles))
-            case .notFound: .notFound
-            case .unavailable(let reason): .unavailable(reason)
+                lookedUp = product
+                guess = OpenFoodFacts.profileGuess(
+                    product, categories: services.offCategories, names: services.nameProfiles,
+                    profiles: services.profiles)
+                lookup = .found(OpenFoodFacts.draft(
+                    from: product, barcode: code, categories: services.offCategories,
+                    names: services.nameProfiles, profiles: services.profiles))
+            case .notFound: lookup = .notFound
+            case .unavailable(let reason): lookup = .unavailable(reason)
             }
             outcome = ScanResolution.resolve(code, products: inputs.products, statuses: statuses, lookup: lookup)
+        }
+        func entry(_ draft: ProductDraft) -> NewProductEntry {
+            NewProductEntry(
+                draft: draft, amount: draft.unitKind == .count ? 1 : nil, lookedUp: lookedUp, guess: guess)
         }
         let subject: Card.Subject
         switch outcome {
         case .known(let product, _): subject = .known(product)
-        case .found(let draft): subject = .new(draft, found: true, reason: nil)
-        case .notFound(let draft): subject = .new(draft, found: false, reason: nil)
-        case .lookupUnavailable(let draft, let reason): subject = .new(draft, found: false, reason: reason)
+        case .found(let draft): subject = .new(entry(draft), found: true, reason: nil)
+        case .notFound(let draft): subject = .new(entry(draft), found: false, reason: nil)
+        case .lookupUnavailable(let draft, let reason): subject = .new(entry(draft), found: false, reason: reason)
         case .lookingUp:
             scanner.resume()
             return
         }
         var card = Card(barcode: code, subject: subject)
-        if card.unitKind == .count { card.amount = 1 }
+        if card.unitKind == .count, card.amount == nil { card.amount = 1 }
         self.card = card
+    }
+
+    // MARK: Card edits (Slice 5)
+
+    func setCardName(_ name: String) {
+        card?.modify { $0.setName(name, guesser: services.nameProfiles, profiles: services.profiles) }
+    }
+
+    func setCardCategory(_ category: SupplyCategory) {
+        card?.modify { $0.setCategory(category, guesser: services.nameProfiles, profiles: services.profiles) }
+    }
+
+    func pickCardProfile(_ key: ShelfLifeProfileKey) {
+        card?.modify { $0.pickProfile(key) }
+    }
+
+    func updateCardCalories(_ change: (inout CalorieEntry) -> Void) {
+        card?.modify { $0.updateCalories(change) }
     }
 
     // MARK: Card actions
@@ -194,8 +251,8 @@ final class PantryWalkModel: RunwayInputsModel {
             case .known(let existing):
                 product = existing
                 isNew = false
-            case .new(let draft, _, _):
-                product = try draft.product()
+            case .new(let entry, _, _):
+                product = try entry.draft.product()
                 isNew = true
             }
             let lot = Lot(

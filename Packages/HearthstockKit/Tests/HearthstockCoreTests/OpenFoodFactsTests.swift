@@ -5,6 +5,7 @@ import Testing
 @Suite struct OpenFoodFactsTests {
     static let profiles = try! ShelfLifeProfileTable.bundledDefaults()
     static let categories = try! OFFCategoryMap.bundled()
+    static let names = try! NameProfileGuesser.bundled()
 
     static func fixture(_ name: String) throws -> Data {
         guard let url = Bundle.module.url(
@@ -21,7 +22,8 @@ import Testing
     }
 
     static func draft(_ name: String) throws -> ProductDraft {
-        OpenFoodFacts.draft(from: try lookedUp(name), barcode: nil, categories: categories, profiles: profiles)
+        OpenFoodFacts.draft(
+            from: try lookedUp(name), barcode: nil, categories: categories, names: names, profiles: profiles)
     }
 
     struct Expected: Sendable, CustomTestStringConvertible {
@@ -36,11 +38,13 @@ import Testing
     }
 
     static let expectations: [Expected] = [
-        // Hampton's pantry, as recorded: no net quantity, so no calories per item, and few category tags.
-        Expected(fixture: "corn", name: "H-E-B Whole Kernel Corn"),
+        // Hampton's pantry, as recorded: no net quantity, so no calories per item, and few category tags. With no
+        // categories, the name guesses the profile (Slice 5).
+        Expected(fixture: "corn", name: "H-E-B Whole Kernel Corn", profile: "canned_low_acid"),
         Expected(fixture: "cinnamon-rolls", name: "Walmart Cinnamon rolls"),
-        Expected(fixture: "protein-bar", name: "Cookies & Cream Pure Protein"),  // the name already holds the brand
-        Expected(fixture: "rice-25lb", name: "Kings Enriched Long Grain Parboiled Rice"),
+        Expected(fixture: "protein-bar", name: "Cookies & Cream Pure Protein",  // the name already holds the brand
+                 kcal: 190),  // a single serving, "1 bar (50 g)" (Slice 5)
+        Expected(fixture: "rice-25lb", name: "Kings Enriched Long Grain Parboiled Rice", profile: "white_rice"),
         Expected(fixture: "water-40pack", name: ""),  // nothing to go on: the form asks for the name and category
         // With a net quantity.
         Expected(fixture: "campbells-soup", name: "Campbell's Cream Of Mushroom Soup, 10.5 oz",
@@ -78,7 +82,8 @@ import Testing
     @Test func draftCarriesTheBarcode() throws {
         let code = try Barcode("051000012616")
         let draft = OpenFoodFacts.draft(
-            from: try Self.lookedUp("campbells-soup"), barcode: code, categories: Self.categories, profiles: Self.profiles)
+            from: try Self.lookedUp("campbells-soup"), barcode: code, categories: Self.categories, names: Self.names,
+            profiles: Self.profiles)
         #expect(draft.barcode == "0051000012616")
         #expect(try draft.product().barcode == "0051000012616")
     }

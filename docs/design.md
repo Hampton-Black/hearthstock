@@ -199,6 +199,7 @@ The "Slice 3: manual entry" row of the canvas holds the screens this slice build
 | S3 · Add lot, saved | Task 8 | Shows the new lot's state, why, and its runway effect (tweak: old beans, rice in a hot garage, expired soup) |
 | S3 · Product picker | Task 7 | Search; recent products when empty; "New product" always first, prefilled with the search text |
 | S3 · Product form | Task 7 | Category, unit kind (locked once lots exist), calories per base unit with the per-package helper, potable water with a Not potable switch, shelf-life profile by name, typed barcode. Edit mode warns that changes apply to every lot |
+| Products list and product page | `hearthstock-oq8` | From Inventory. Every product, with lot counts; the page lists current and used-up lots, Edit, and Delete product, disabled until no lot is left |
 | S3 · Settings | Task 6, 11 | Site name, Use soon notice stepper, household, location tree with climate tags, backup, DEBUG-only developer section |
 | S3 · Edit location | Task 6 | Parent ("Inside"), climate with "Inherit from parent" and each class's multiplier, humidity, kit switches, and the blocked-delete message |
 | S3 · Restore backup | Task 11 | File summary, what will be replaced, "Export current data first", red destructive action; unreadable-file state (tweak) |

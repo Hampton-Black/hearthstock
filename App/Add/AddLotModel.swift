@@ -96,11 +96,18 @@ final class AddLotModel: RunwayInputsModel {
         var note: String?
         /// The lookup the draft came from, so switching the unit kind can fill calories for the new unit.
         var lookedUp: LookedUpProduct?
+        /// The profile the lookup's draft guessed from the name (Slice 5 Task 7).
+        var guess: NameProfileGuesser.Guess?
+        /// A new product already started on the not-found form, with its calorie answers and name guess. Takes the
+        /// place of `product`.
+        var newProduct: NewProductEntry?
     }
 
     /// Shown above the product row ("Filled in from Open Food Facts…") until the item is saved.
     private(set) var note: String?
     private(set) var lookedUp: LookedUpProduct?
+    /// A new product's calorie answers and name guess, kept in step with `product`'s draft (Slice 5).
+    private(set) var newEntry: NewProductEntry?
 
     init(services: AppServices, siteID: SiteID, today: CalendarDate, preset: Preset? = nil) {
         self.services = services
@@ -109,12 +116,71 @@ final class AddLotModel: RunwayInputsModel {
         acquired = today
         lastUsedLocationID = Preferences.lastUsedLocation(siteID: siteID)
         if let preset {
-            product = preset.product
             locationID = preset.locationID
             note = preset.note
             lookedUp = preset.lookedUp
+            if let started = preset.newProduct {
+                newEntry = started
+                product = .new(started.draft)
+                amount = started.amount ?? amount
+            } else {
+                if case .new(let draft)? = preset.product {
+                    newEntry = NewProductEntry(draft: draft, lookedUp: preset.lookedUp, guess: preset.guess)
+                }
+                product = preset.product
+            }
             productChanged(from: nil)
         }
+    }
+
+    // MARK: Product
+
+    /// A product picked or made in the picker: anything the scan said about the old one no longer applies.
+    func choose(_ choice: ProductChoice) {
+        note = nil
+        lookedUp = nil
+        if case .new(let draft) = choice {
+            newEntry = NewProductEntry(draft: draft)
+        } else {
+            newEntry = nil
+        }
+        product = choice
+    }
+
+    /// The new product's draft as the product form handed it back.
+    func formFinished(_ draft: ProductDraft) {
+        guard var entry = newEntry else {
+            product = .new(draft)
+            return
+        }
+        entry.amount = amount
+        entry.adopt(draft)
+        newEntry = entry
+        product = .new(entry.draft)
+        amount = entry.amount
+    }
+
+    /// Changes the new product's calorie answers (Slice 5 Task 5). A bag's net weight can switch it to lb and scale
+    /// the amount (Decision 8).
+    func updateCalories(_ change: (inout CalorieEntry) -> Void) {
+        guard var entry = newEntry else { return }
+        entry.amount = amount
+        entry.updateCalories(change)
+        newEntry = entry
+        product = .new(entry.draft)
+        // A switch or a new net weight gives the amount in the base unit (lb, gal, items).
+        if entry.amount != amount {
+            amount = entry.amount
+            unit = entry.draft.unitKind.baseUnit
+        }
+    }
+
+    /// "Change" on the name guess.
+    func pickProfile(_ key: ShelfLifeProfileKey) {
+        guard var entry = newEntry else { return }
+        entry.pickProfile(key)
+        newEntry = entry
+        product = .new(entry.draft)
     }
 
     func recompute() {
@@ -252,6 +318,7 @@ final class AddLotModel: RunwayInputsModel {
         estimateMonths = nil
         note = nil
         lookedUp = nil
+        newEntry = nil
         packaging = .none
         opened = false
         notes = ""

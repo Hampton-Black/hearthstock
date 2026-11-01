@@ -14,6 +14,12 @@ public struct LookedUpProduct: Hashable, Sendable, Codable {
     /// Energy per 100 g (per 100 ml for drinks), converted from kJ when only kJ is given.
     public var kcalPer100: Double?
     public var kcalPerServing: Double?
+    /// The serving as printed: "0.5 cup (125 g)", "1 bar (50 g)". Empty in answers cached before Slice 5.
+    public var servingLabel: String?
+    /// One serving's amount in `servingQuantityUnit`, as Open Food Facts gives it (its unit isn't always the
+    /// label's: the corn's 125 g serving is recorded as 125 ml).
+    public var servingQuantity: Double?
+    public var servingQuantityUnit: NetUnit?
     public var categoryTags: [String]
 
     /// Net amounts are grams or millilitres once converted.
@@ -25,6 +31,7 @@ public struct LookedUpProduct: Hashable, Sendable, Codable {
     public init(
         name: String? = nil, brand: String? = nil, quantityLabel: String? = nil, netQuantity: Double? = nil,
         netQuantityUnit: NetUnit? = nil, kcalPer100: Double? = nil, kcalPerServing: Double? = nil,
+        servingLabel: String? = nil, servingQuantity: Double? = nil, servingQuantityUnit: NetUnit? = nil,
         categoryTags: [String] = []
     ) {
         self.name = name
@@ -34,6 +41,9 @@ public struct LookedUpProduct: Hashable, Sendable, Codable {
         self.netQuantityUnit = netQuantityUnit
         self.kcalPer100 = kcalPer100
         self.kcalPerServing = kcalPerServing
+        self.servingLabel = servingLabel
+        self.servingQuantity = servingQuantity
+        self.servingQuantityUnit = servingQuantityUnit
         self.categoryTags = categoryTags
     }
 }

@@ -8,6 +8,10 @@ final class ProductFormModel {
     var draft: ProductDraft
     var perPackage = false
     var kcalPerPackage: Double?
+    /// The label's two numbers, when that's how the package's calories are known (Slice 5 Task 5): together they
+    /// fill kcal per package.
+    var kcalPerServing: Double? { didSet { fillFromServings() } }
+    var servingsPerPackage: Double? { didSet { fillFromServings() } }
     var packageSize: Double?
     var packageUnit: QuantityUnit
     var notPotable: Bool
@@ -63,6 +67,13 @@ final class ProductFormModel {
         notPotable = false
         draft.potableWaterGalPerBaseUnit = ProductDraft.defaultPotableWaterGalPerBaseUnit(
             category: draft.category, unitKind: draft.unitKind)
+    }
+
+    private func fillFromServings() {
+        guard let kcalPerServing, let servingsPerPackage, kcalPerServing.isFinite, servingsPerPackage.isFinite,
+              kcalPerServing >= 0, servingsPerPackage > 0
+        else { return }
+        kcalPerPackage = (kcalPerServing * servingsPerPackage).rounded()
     }
 
     /// The per-package helper's result, when its inputs make one.
@@ -282,6 +293,14 @@ struct ProductForm: View {
         let per = model.draft.unitKind.perUnit
         return Section {
             if model.perPackage {
+                LabeledContent("kcal per serving") {
+                    TextField("80", value: $model.kcalPerServing, format: .number)
+                        .keyboardType(.decimalPad).multilineTextAlignment(.trailing).numeric()
+                }
+                LabeledContent("Servings per package") {
+                    TextField("3.5", value: $model.servingsPerPackage, format: .number)
+                        .keyboardType(.decimalPad).multilineTextAlignment(.trailing).numeric()
+                }
                 LabeledContent("kcal per package") {
                     TextField("32,600", value: $model.kcalPerPackage, format: .number)
                         .keyboardType(.decimalPad).multilineTextAlignment(.trailing).numeric()
@@ -318,7 +337,7 @@ struct ProductForm: View {
             Text("Calories")
         } footer: {
             Text(model.perPackage
-                ? "From the nutrition label: servings × kcal per serving, then the package size. Only the per-\(per) number is saved."
+                ? "From the nutrition label: kcal per serving × servings fills kcal per package, or type it. Then the package size. Only the per-\(per) number is saved."
                 : "Leave empty if you don't know yet; the Dashboard lists products missing calories.")
         }
     }

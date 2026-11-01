@@ -32,7 +32,8 @@ Without `Local.xcconfig`, the app still builds and runs on the simulator.
 From the command line, with the phone connected:
 
 ```sh
-xcrun devicectl list devices            # note the phone's identifier
+xcrun devicectl list devices            # note the phone's identifier, for devicectl
+xcodebuild -project Hearthstock.xcodeproj -scheme Hearthstock -showdestinations   # the phone's id here (its hardware UDID) is the one xcodebuild needs
 xcodebuild -project Hearthstock.xcodeproj -scheme Hearthstock \
   -destination 'platform=iOS,id=<identifier>' -allowProvisioningUpdates build
 ```
