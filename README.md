@@ -47,7 +47,7 @@ The real food and water in the pantry and garage are going in, so the app gets u
 
 Ideas for the next slice, in the order they're likely to be picked up. Tasks are tracked in Beads once a slice is planned.
 
-- **Kits and the Kits tab (Slice 6, the likely next slice).** Go-bags are the main v1 promise still missing. This includes the first new database migration since Slice 4.
+- **Kits and the Kits tab (Slice 6, the likely next slice; [draft plan](docs/slice-6.md)).** Go-bags are the main v1 promise still missing. This includes the first new database migration since Slice 4.
 - **Local reminders.** Could move ahead of kits if real dates make them more useful sooner.
 - **Per-product shelf-life windows in the app.** For items that are safe to judge by hand, like old brown rice marked Expired. The data model already supports it; only the screens are missing.
 - **A reset option in Settings.** Today, starting fresh means deleting the app.
